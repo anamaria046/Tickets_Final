@@ -1,1 +1,69 @@
-#Endpoints para user_ms
+### 1. Registrar un Nuevo Usuario (Público)
+# Prueba: Crea un usuario gestor. 
+POST http://localhost:8000/register
+Content-Type: application/json
+
+{
+    "name": "Nuevo Gestor",
+    "email": "gestor4@example.com",
+    "password": "password123",
+    "role": "gestor"
+}
+
+### 2. Iniciar Sesión (Login) 
+POST http://localhost:8000/login
+Content-Type: application/json
+
+{
+    "email": "gestor4@example.com",
+    "password": "password123"
+}
+
+### 3. Cerrar Sesión (Logout) - Usar Token Obtenido (Protegido)
+POST http://localhost:8000/logout
+Authorization: Bearer f27193dd6610b3b46315691fb05400fe12092a4d264fe895f254567f53ce6dc6
+Content-Type: application/json
+
+### 4. Listar Todos los Usuarios 
+GET http://localhost:8000/users
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+### 5. Actualizar un Usuario 
+PUT http://localhost:8000/users/1
+Authorization: Bearer f27193dd6610b3b46315691fb05400fe12092a4d264fe895f254567f53ce6dc6
+Content-Type: application/json
+
+{
+    "name": "Juan Gestor Actualizado",
+    "role": "gestor"
+}
+
+### 6. Eliminar un Usuario 
+DELETE http://localhost:8000/users/2
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+### 7. Prueba de Error: Acceso Sin Token (Protegido)
+GET http://localhost:8000/users
+Content-Type: application/json
+
+### 8. Prueba de Error: Token Inválido (Protegido)
+
+GET http://localhost:8000/users
+Authorization: Bearer token_falso_123
+Content-Type: application/json
+
+### 9. Prueba de Error: Acceso No Autorizado (Gestor Intentando Listar Usuarios)
+POST http://localhost:8000/login
+Content-Type: application/json
+
+{
+    "email": "gestor1@example.com",
+    "password": "password123"
+}
+
+# Luego, con el token de gestor:
+GET http://localhost:8000/users
+Authorization: Bearer <TOKEN_DEL_GESTOR>
+Content-Type: application/json
