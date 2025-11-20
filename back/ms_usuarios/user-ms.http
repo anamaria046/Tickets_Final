@@ -1,13 +1,13 @@
-### 1. Registrar un Nuevo Usuario (Público)
+### 1.Registrar Nuevo Usuario
 # Prueba: Crea un usuario gestor. 
 POST http://localhost:8000/register
 Content-Type: application/json
 
 {
-    "name": "Nuevo Gestor",
-    "email": "gestor4@example.com",
+  "name": "Admin Pruebas",
+    "email": "admin_test@example.com",
     "password": "password123",
-    "role": "gestor"
+    "role": "admin"
 }
 
 ### 2. Iniciar Sesión (Login) 
@@ -15,18 +15,18 @@ POST http://localhost:8000/login
 Content-Type: application/json
 
 {
-    "email": "gestor4@example.com",
+    "email": "admin_test@example.com",
     "password": "password123"
 }
 
-### 3. Cerrar Sesión (Logout) - Usar Token Obtenido (Protegido)
+### 3. Cerrar Sesión (Logout) 
 POST http://localhost:8000/logout
-Authorization: Bearer f27193dd6610b3b46315691fb05400fe12092a4d264fe895f254567f53ce6dc6
+Authorization: Bearer 61ca59daad13207bb6a221bfa6a8caf9
 Content-Type: application/json
 
 ### 4. Listar Todos los Usuarios 
 GET http://localhost:8000/users
-Authorization: Bearer <TOKEN>
+Authorization: Bearer d50e615fe08022a84cfa8396946c9d64
 Content-Type: application/json
 
 ### 5. Actualizar un Usuario 
@@ -41,7 +41,7 @@ Content-Type: application/json
 
 ### 6. Eliminar un Usuario 
 DELETE http://localhost:8000/users/2
-Authorization: Bearer <TOKEN>
+Authorization: Bearer c754ca884480b981f1f2f537838f0bb4
 Content-Type: application/json
 
 ### 7. Prueba de Error: Acceso Sin Token (Protegido)
@@ -67,3 +67,6 @@ Content-Type: application/json
 GET http://localhost:8000/users
 Authorization: Bearer <TOKEN_DEL_GESTOR>
 Content-Type: application/json
+
+### **4. Accede al test:**
+http://127.0.0.1:8000/test_db.php

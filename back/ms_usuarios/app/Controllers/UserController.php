@@ -38,47 +38,56 @@ class UserController
         return $response->withHeader('Content-Type', 'application/json');
     }
 
-    public function login($request, $response)
-    {
-        $data = $request->getParsedBody();
+ public function login($request, $response)
+{
+    $data = $request->getParsedBody();
 
-        if (empty($data['email']) || empty($data['password'])) {
-            $response->getBody()->write(json_encode(['error' => 'Email y contraseña requeridos']));
-            return $response->withStatus(400);
-        }
-
-        $user = $this->repo->getUserByEmail($data['email']);
-
-        if (!$user || !password_verify($data['password'], $user->password)) {
-            $response->getBody()->write(json_encode(['error' => 'Credenciales incorrectas']));
-            return $response->withStatus(401);
-        }
-
-        $token = bin2hex(random_bytes(32));
-
-        AToken::create([
-            'user_id' => $user->id,
-            'token' => $token
-        ]);
-
-        $response->getBody()->write(json_encode([
-            'token' => $token,
-            'role' => $user->role
-        ]));
-
-        return $response->withHeader('Content-Type', 'application/json');
+    if (empty($data['email']) || empty($data['password'])) {
+        $response->getBody()->write(json_encode(['error' => 'Email y contraseña requeridos']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
     }
 
-    public function logout($request, $response)
-    {
-        $headers = $request->getHeaders();
-        $token = str_replace("Bearer ", "", $headers['Authorization'][0] ?? '');
-
-        AToken::where('token', $token)->delete();
-
-        $response->getBody()->write(json_encode(['message' => 'Sesión cerrada']));
-        return $response->withHeader('Content-Type', 'application/json');
+    $user = $this->repo->getUserByEmail($data['email']);
+    if (!$user || $user->password !== $data['password']) {
+        $response->getBody()->write(json_encode(['error' => 'Credenciales incorrectas']));
+        return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
     }
+
+    $token = bin2hex(random_bytes(16));
+
+    AToken::create([
+        'user_id' => $user->id,
+        'token' => $token
+    ]);
+
+    $response->getBody()->write(json_encode([
+        'token' => $token,
+        'role' => $user->role
+    ]));
+
+    return $response->withHeader('Content-Type', 'application/json');
+}
+
+public function logout($request, $response)
+{
+    $headers = $request->getHeaders();
+    $authHeader = $headers['Authorization'][0] ?? '';
+    
+    // Extraer token
+    $token = str_replace("Bearer ", "", $authHeader);
+    $token = trim($token);
+
+    // Eliminar el token de la base de datos
+    $deleted = AToken::where('token', $token)->delete();
+
+    if ($deleted) {
+        $response->getBody()->write(json_encode(['message' => 'Sesión cerrada correctamente']));
+    } else {
+        $response->getBody()->write(json_encode(['message' => 'Sesión cerrada (token ya no existía)']));
+    }
+    
+    return $response->withHeader('Content-Type', 'application/json');
+}
 
     public function listUsers($request, $response)
     {

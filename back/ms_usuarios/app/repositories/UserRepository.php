@@ -8,7 +8,6 @@ class UserRepository
 {
     public function createUser($data)
     {
-    $data['password'] = password_hash($data['password'], PASSWORD_BCRYPT);
         return Users::create($data);
     }
 
@@ -24,6 +23,7 @@ class UserRepository
 
     public function updateUser($id, $data)
     {
+        // Si se actualiza la contraseña, ya no la hasheamos
         return Users::where('id', $id)->update($data);
     }
 
