@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="Dashboard del Administrador - Sistema de Tickets">
+    <title>Admin - Sistema de Tickets</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+
+<body>
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="logo">🎫</div>
+                    <h1 class="header-title">Sistema de Tickets - Admin</h1>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <span class="user-icon">👤</span>
+                        <span id="userName" class="user-name">Administrador</span>
+                        <span class="badge badge-danger">Admin</span>
+                    </div>
+                    <button id="logoutBtn" class="btn btn-secondary btn-sm">Cerrar Sesión</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <div class="container">
+
+            <div class="tabs-nav">
+                <button class="tab-btn active" data-tab="tickets">🎫 Gestión de Tickets</button>
+                <button class="tab-btn" data-tab="usuarios">👥 Gestión de Usuarios</button>
+            </div>
+
+            <!---------------------Gestión de Tickets-------------->
+            <div id="tab-tickets" class="tab-content active">
+                <div class="section-header">
+                    <h2>Todos los Tickets</h2>
+                    <p class="text-secondary">Gestiona y asigna tickets</p>
+                </div>
+
+                <!------------------Filtros-------------------------->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <form id="filterForm" class="filter-form">
+                            <div class="filter-grid">
+                                <div class="form-group">
+                                    <label for="filterEstado" class="form-label">Estado</label>
+                                    <select id="filterEstado" class="form-control">
+                                        <option value="">Todos</option>
+                                        <option value="abierto">Abierto</option>
+                                        <option value="en_progreso">En Progreso</option>
+                                        <option value="resuelto">Resuelto</option>
+                                        <option value="cerrado">Cerrado</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="filterGestor" class="form-label">Creador</label>
+                                    <select id="filterGestor" class="form-control">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="filterAdmin" class="form-label">Asignado a</label>
+                                    <select id="filterAdmin" class="form-control">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <button type="submit" class="btn btn-primary" style="margin-top: 1.75rem;">Filtrar</button>
+                                    <button type="button" id="clearFilters" class="btn btn-secondary"
+                                        style="margin-top: 1.75rem;">
+                                        Limpiar
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!--------------------------Tickets Tabla------------------------>
+                <div class="card">
+                    <div class="card-body">
+                        <div id="ticketsLoading" class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <p>Cargando tickets...</p>
+                        </div>
+
+                        <div id="ticketsTableContainer" style="display: none;">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Título</th>
+                                            <th>Estado</th>
+                                            <th>Creador</th>
+                                            <th>Asignado a</th>
+                                            <th>Fecha</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ticketsTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="noTickets" class="empty-state" style="display: none;">
+                            <div class="empty-icon">📭</div>
+                            <h3>No hay tickets</h3>
+                            <p>No se encontraron tickets con los filtros seleccionados</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!----------------------------Gestión de Usuarios---------------->
+            <div id="tab-usuarios" class="tab-content">
+                <div class="section-header">
+                    <h2>Gestión de Usuarios</h2>
+                    <p class="text-secondary">Administra usuarios del sistema</p>
+                </div>
+
+                <!-----------------------Tabla de usuarios----->
+                <div class="card">
+                    <div class="card-body">
+                        <div id="usersLoading" class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <p>Cargando usuarios...</p>
+                        </div>
+
+                        <div id="usersTableContainer" style="display: none;">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nombre</th>
+                                            <th>Email</th>
+                                            <th>Rol</th>
+                                            <th>Fecha Registro</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="usersTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!----------------------------Detalles del Ticket----------->
+    <div id="ticketModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Detalles del Ticket</h3>
+                <button class="modal-close" id="closeTicketModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="ticketDetails"></div>
+
+                <!----------------Acciones de Admi--------------->
+                <div class="admin-actions">
+                    <h4>Acciones</h4>
+                    <div class="actions-grid">
+                        <div class="form-group">
+                            <label for="ticketEstado" class="form-label">Cambiar Estado</label>
+                            <select id="ticketEstado" class="form-control">
+                                <option value="abierto">Abierto</option>
+                                <option value="en_progreso">En Progreso</option>
+                                <option value="resuelto">Resuelto</option>
+                                <option value="cerrado">Cerrado</option>
+                            </select>
+                            <button id="updateStatusBtn" class="btn btn-primary btn-sm mt-1">Actualizar Estado</button>
+                        </div>
+                        <div class="form-group">
+                            <label for="assignAdmin" class="form-label">Asignar a Admin</label>
+                            <select id="assignAdmin" class="form-control">
+                                <option value="">Sin asignar</option>
+                            </select>
+                            <button id="assignTicketBtn" class="btn btn-primary btn-sm mt-1">Asignar Ticket</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!--------------------Historial-------------->
+                <div class="comments-section">
+                    <h4>Historial de Actividad</h4>
+                    <div id="ticketHistory" class="history-list"></div>
+
+                    <form id="addCommentForm" class="comment-form">
+                        <div class="form-group">
+                            <label for="comentario" class="form-label">Agregar Comentario</label>
+                            <textarea id="comentario" class="form-control" placeholder="Escribe tu comentario..."
+                                rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Enviar Comentario</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-------------------------Editar Usuarioo------------------->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Editar Usuario</h3>
+                <button class="modal-close" id="closeUserModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId">
+
+                    <div class="form-group">
+                        <label for="editUserName" class="form-label">Nombre</label>
+                        <input type="text" id="editUserName" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editUserEmail" class="form-label">Email</label>
+                        <input type="email" id="editUserEmail" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editUserRole" class="form-label">Rol</label>
+                        <select id="editUserRole" class="form-control" required>
+                            <option value="gestor">Gestor</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="cancelEditUser">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/admin-dashboard.js"></script>
+</body>
+
+</html>

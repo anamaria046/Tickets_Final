@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dashboard del Gestor - Sistema de Tickets">
+    <title>Gestor - Sistema de Tickets</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/gestor.css">
+</head>
+
+<body>
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="logo">🎫</div>
+                    <h1 class="header-title">Sistema de Tickets</h1>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <span class="user-icon">👤</span>
+                        <span id="userName" class="user-name">Usuario</span>
+                        <span class="badge badge-primary">Gestor</span>
+                    </div>
+                    <button id="logoutBtn" class="btn btn-secondary btn-sm">
+                        Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <div class="container">
+            <div class="dashboard-grid">
+                <aside class="dashboard-sidebar">
+                    <nav class="sidebar-nav">
+                        <button class="nav-item active" data-section="crear">
+                            ➕ Crear Ticket
+                        </button>
+                        <button class="nav-item" data-section="mis-tickets">
+                            📋 Mis Tickets
+                        </button>
+                    </nav>
+                </aside>
+
+                <div class="dashboard-content">
+                    <!--------------------Crear Ticket------------------->
+                    <section id="section-crear" class="content-section active">
+                        <div class="section-header">
+                            <h2>Crear Nuevo Ticket</h2>
+                            <p class="text-secondary">Reporta un incidente o solicitud</p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-body">
+                                <form id="createTicketForm">
+                                    <div class="form-group">
+                                        <label for="titulo" class="form-label">Título del Ticket</label>
+                                        <input type="text" id="titulo" class="form-control"
+                                            placeholder="Ej: Error al iniciar sesión" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="descripcion" class="form-label">Descripción</label>
+                                        <textarea id="descripcion" class="form-control"
+                                            placeholder="Describe el problema o solicitud en detalle..." rows="5"
+                                            required></textarea>
+                                    </div>
+
+                                    <div id="createMessage" class="alert" style="display: none;"></div>
+
+                                    <button type="submit" id="createBtn" class="btn btn-primary">
+                                        Crear Ticket
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!----------------Mis Tickets-------->
+                    <section id="section-mis-tickets" class="content-section">
+                        <div class="section-header">
+                            <h2>Mis Tickets</h2>
+                            <p class="text-secondary">Tickets que has creado</p>
+                        </div>
+
+                        <div id="ticketsLoading" class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <p>Cargando tickets...</p>
+                        </div>
+
+                        <div id="ticketsContainer" class="tickets-grid"></div>
+
+                        <div id="noTickets" class="empty-state" style="display: none;">
+                            <div class="empty-icon">📭</div>
+                            <h3>No tienes tickets</h3>
+                            <p>Crea tu primer ticket para comenzar</p>
+                            <button class="btn btn-primary" data-section="crear">
+                                Crear Ticket
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!----------------------Detalles del Ticket----------->
+    <div id="ticketModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Detalles del Ticket</h3>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="ticketDetails">
+                </div>
+
+                <!----------------Sección de comentarios------------>
+                <div class="comments-section">
+                    <h4>Historial de Actividad</h4>
+                    <div id="ticketHistory" class="history-list">
+                    </div>
+
+                    <!----------Agregar comentario-------------->
+                    <form id="addCommentForm" class="comment-form">
+                        <div class="form-group">
+                            <label for="comentario" class="form-label">Agregar Comentario</label>
+                            <textarea id="comentario" class="form-control" placeholder="Escribe tu comentario..."
+                                rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            Enviar Comentario
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/gestor-dashboard.js"></script>
+</body>
+
+</html>

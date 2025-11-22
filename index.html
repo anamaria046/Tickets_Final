@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de Gestión de Tickets - Inicio de Sesión">
+    <title>Iniciar Sesión - Sistema de Tickets</title>
+    <link rel="stylesheet" href="front/css/main.css">
+    <link rel="stylesheet" href="front/css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    🎫
+                </div>
+                <h1 class="auth-title">SISTEMA DE TICKETS</h1>
+                <p class="auth-subtitle">Iniciar sesión </p>
+            </div>
+            
+            <div id="message" class="auth-message"></div>
+
+             <!------------Formulario de login------> 
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="email" class="form-label">Correo Electrónico</label>
+                    <div class="input-group">
+                        <span class="input-icon">📧</span>
+                        <input type="email" id="email" class="form-control" placeholder="tu@gmail.com" required
+                            autocomplete="email">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-icon">🔐</span>
+                        <input type="password" id="password" class="form-control" placeholder="••••••••" required
+                            autocomplete="current-password">
+                    </div>
+                </div>
+
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-block btn-lg">Iniciar Sesión</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>
+                    <a href="front/register.html">Crear cuenta nueva</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="front/js/config.js"></script>
+    <script src="front/js/auth.js"></script>
+    <script src="front/js/api.js"></script>
+    <script src="front/js/login.js"></script>
+</body>
+
+</html>

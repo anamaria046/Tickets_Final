@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="Sistema de Gestión de Tickets - Registro">
+    <title>Registro - Sistema de Tickets</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    🎫
+                </div>
+                <h1 class="auth-title">Crear Cuenta</h1>
+                <p class="auth-subtitle">Regístrate para comenzar</p>
+            </div>
+
+            <!----Mensaje de estado---->
+            <div id="message" class="auth-message"></div>
+
+            <!------Formulario de registro------>
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="name" class="form-label">Nombre Completo</label>
+                    <div class="input-group">
+                        <span class="input-icon">👤</span>
+                        <input type="text" id="name" class="form-control" placeholder="Juan Rojas" required
+                            autocomplete="name">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="form-label">Correo Electrónico</label>
+                    <div class="input-group">
+                        <span class="input-icon">📧</span>
+                        <input type="email" id="email" class="form-control" placeholder="juanrojas@gmail.com" required
+                            autocomplete="email">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="password" class="form-control" placeholder="••••••••" required
+                            autocomplete="new-password" minlength="6">
+                    </div>
+                    <small class="form-help">Mínimo 6 caracteres</small>
+                </div>
+                <div class="form-group">
+                    <label for="role" class="form-label">Tipo de Usuario</label>
+                    <select id="role" class="form-control" required>
+                        <option value="">Selecciona un rol</option>
+                        <option value="gestor">Gestor - Crear y gestionar mis tickets</option>
+                        <option value="admin">Administrador - Gestionar todos los tickets y usuarios</option>
+                    </select>
+                </div>
+
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-block btn-lg">
+                    Registrarse
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p><a href="../index.html">Inicia sesión</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/register.js"></script>
+</body>
+
+</html>
