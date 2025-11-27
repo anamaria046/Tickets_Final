@@ -4,7 +4,7 @@ Content-Type: application/json
 
 {
   "name": "Admin Pruebas",
-  "email": "admintest@example.com",
+  "email": "adminprueba@example.com",
   "password": "password123",
   "role": "admin"
 }
@@ -25,7 +25,7 @@ Content-Type: application/json
 
 ### 4. Listar Todos los Usuarios 
 GET http://localhost:8000/users
-Authorization: Bearer 7962a966c3b6d0bffaa07724f9c51bd2
+Authorization: Bearer 27b3abbfc7da8c0839c006a8a121b61c
 Content-Type: application/json
 
 ### 5. Actualizar un Usuario 

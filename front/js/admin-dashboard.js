@@ -619,3 +619,112 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+
+////////////////////CREAR USUARIO/////////////////
+
+// Agregar event listener para crear usuario
+document.addEventListener('DOMContentLoaded', function () {
+    const createUserForm = document.getElementById('createUserForm');
+    if (createUserForm) {
+        createUserForm.addEventListener('submit', handleCreateUser);
+    }
+});
+
+async function handleCreateUser(e) {
+    e.preventDefault();
+
+    // Limpiar mensajes previos
+    hideCreateUserMessage();
+
+    // Obtener valores
+    const name = document.getElementById('newUserName').value.trim();
+    const email = document.getElementById('newUserEmail').value.trim();
+    const password = document.getElementById('newUserPassword').value.trim();
+    const role = document.getElementById('newUserRole').value;
+
+    // Validación básica
+    if (!name || !email || !password || !role) {
+        showCreateUserMessage('Por favor completa todos los campos', 'error');
+        return;
+    }
+
+    // Validar formato de email
+    if (!isValidEmail(email)) {
+        showCreateUserMessage('Por favor ingresa un email válido', 'error');
+        return;
+    }
+
+    // Validar longitud de contraseña
+    if (password.length < 6) {
+        showCreateUserMessage('La contraseña debe tener al menos 6 caracteres', 'error');
+        return;
+    }
+
+    // Validar rol
+    if (role !== 'gestor' && role !== 'admin') {
+        showCreateUserMessage('Por favor selecciona un rol válido', 'error');
+        return;
+    }
+
+    // Mostrar estado de carga
+    setCreateUserLoading(true);
+
+    try {
+        // Llamar a la API de registro
+        const userData = {
+            name: name,
+            email: email,
+            password: password,
+            role: role
+        };
+
+        const response = await register(userData);
+
+        // Mostrar mensaje de éxito
+        showCreateUserMessage('Usuario creado exitosamente', 'success');
+
+        // Limpiar formulario
+        e.target.reset();
+
+        // Recargar lista de usuarios si estamos en ese tab
+        setTimeout(() => {
+            loadUsers();
+            hideCreateUserMessage();
+        }, 2000);
+
+    } catch (error) {
+        console.error('Error al crear usuario:', error);
+        showCreateUserMessage(error.message || 'Error al crear usuario. Intenta nuevamente.', 'error');
+    } finally {
+        setCreateUserLoading(false);
+    }
+}
+
+function showCreateUserMessage(text, type) {
+    const messageDiv = document.getElementById('createUserMessage');
+    messageDiv.textContent = text;
+    messageDiv.className = `auth-message ${type} show`;
+}
+
+function hideCreateUserMessage() {
+    const messageDiv = document.getElementById('createUserMessage');
+    messageDiv.className = 'auth-message';
+    messageDiv.textContent = '';
+}
+
+function setCreateUserLoading(loading) {
+    const submitBtn = document.getElementById('createUserSubmitBtn');
+    if (loading) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('btn-loading');
+    } else {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('btn-loading');
+    }
+}
+
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}

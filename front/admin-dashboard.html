@@ -21,7 +21,7 @@
                     <div class="user-info">
                         <span class="user-icon">👤</span>
                         <span id="userName" class="user-name">Administrador</span>
-                        <span class="badge badge-danger">Admin</span>
+                        <span class="badge badge-danger">ADMIN</span>
                     </div>
                     <button id="logoutBtn" class="btn btn-secondary btn-sm">Cerrar Sesión</button>
                 </div>
@@ -35,6 +35,7 @@
             <div class="tabs-nav">
                 <button class="tab-btn active" data-tab="tickets">🎫 Gestión de Tickets</button>
                 <button class="tab-btn" data-tab="usuarios">👥 Gestión de Usuarios</button>
+                <button class="tab-btn" data-tab="crear-usuario">➕ Crear Usuario</button>
             </div>
 
             <!---------------------Gestión de Tickets-------------->
@@ -72,7 +73,8 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <button type="submit" class="btn btn-primary" style="margin-top: 1.75rem;">Filtrar</button>
+                                    <button type="submit" class="btn btn-primary"
+                                        style="margin-top: 1.75rem;">Filtrar</button>
                                     <button type="button" id="clearFilters" class="btn btn-secondary"
                                         style="margin-top: 1.75rem;">
                                         Limpiar
@@ -120,7 +122,7 @@
                 </div>
             </div>
 
-            <!----------------------------Gestión de Usuarios---------------->
+            <!----------------------------Gestión de Usuarios------------------>
             <div id="tab-usuarios" class="tab-content">
                 <div class="section-header">
                     <h2>Gestión de Usuarios</h2>
@@ -156,10 +158,70 @@
                     </div>
                 </div>
             </div>
+
+            <!----------------------------Crear Usuario------------------>
+            <div id="tab-crear-usuario" class="tab-content">
+                <div class="section-header">
+                    <h2>Crear Nuevo Usuario</h2>
+                    <p class="text-secondary">Registra un nuevo usuario en el sistema</p>
+                </div>
+
+                <!----Mensaje de estado---->
+                <div id="createUserMessage" class="auth-message"></div>
+
+                <!------Formulario de creación de usuario------>
+                <div class="card">
+                    <div class="card-body">
+                        <form id="createUserForm" class="auth-form">
+                            <div class="form-group">
+                                <label for="newUserName" class="form-label">Nombre Completo</label>
+                                <div class="input-group">
+                                    <span class="input-icon">👤</span>
+                                    <input type="text" id="newUserName" class="form-control" placeholder="Juan Rojas"
+                                        required autocomplete="name">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newUserEmail" class="form-label">Correo Electrónico</label>
+                                <div class="input-group">
+                                    <span class="input-icon">📧</span>
+                                    <input type="email" id="newUserEmail" class="form-control"
+                                        placeholder="juanrojas@gmail.com" required autocomplete="email">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newUserPassword" class="form-label">Contraseña</label>
+                                <div class="input-group">
+                                    <span class="input-icon">🔒</span>
+                                    <input type="password" id="newUserPassword" class="form-control"
+                                        placeholder="••••••••" required autocomplete="new-password" minlength="6">
+                                </div>
+                                <small class="form-help">Mínimo 6 caracteres</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newUserRole" class="form-label">Tipo de Usuario</label>
+                                <select id="newUserRole" class="form-control" required>
+                                    <option value="">Selecciona un rol</option>
+                                    <option value="gestor">Gestor - Crear y gestionar mis tickets</option>
+                                    <option value="admin">Administrador - Gestionar todos los tickets y usuarios
+                                    </option>
+                                </select>
+                            </div>
+
+                            <button type="submit" id="createUserSubmitBtn" class="btn btn-primary btn-block btn-lg">
+                                Crear Usuario
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
-    <!----------------------------Detalles del Ticket----------->
+    <!----------------------------Detalles del Ticket------------->
     <div id="ticketModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -169,7 +231,7 @@
             <div class="modal-body">
                 <div id="ticketDetails"></div>
 
-                <!----------------Acciones de Admi--------------->
+                <!----------------Acciones de Admin--------------->
                 <div class="admin-actions">
                     <h4>Acciones</h4>
                     <div class="actions-grid">
@@ -211,7 +273,7 @@
         </div>
     </div>
 
-    <!-------------------------Editar Usuarioo------------------->
+    <!-------------------------Editar Usuario--------------------->
     <div id="userModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
