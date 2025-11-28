@@ -1,40 +1,56 @@
 <?php
-use App\Controllers\TicketController;
-use App\Middleware\Token;
-use Slim\App;
 
-return function (App $app) {
-    // Crear instancia del controlador
-    
-    $ticketController = new TicketController();
-    $app->group('', function ($group) use ($ticketController) {
+use App\Repositories\TicketRepository;
+use App\Middleware\Token;
+
+return function ($app) {
+    // Todas las rutas de tickets requieren autenticación
+    $app->group('', function ($group) {
+        $repository = new TicketRepository();
         
         // Crear ticket (gestores)
-        $group->post('/tickets', [$ticketController, 'createTicket']);
+        $group->post('/tickets', function ($request, $response) use ($repository) {
+            return $repository->createTicket($request, $response);
+        });
         
         // Listar mis tickets (gestores)
-        $group->get('/tickets/my', [$ticketController, 'listMyTickets']);
+        $group->get('/tickets/my', function ($request, $response) use ($repository) {
+            return $repository->listMyTickets($request, $response);
+        });
         
         // Buscar/filtrar tickets (admins)
-        $group->get('/tickets/search', [$ticketController, 'searchTickets']);
+        $group->get('/tickets/search', function ($request, $response) use ($repository) {
+            return $repository->searchTickets($request, $response);
+        });
         
         // Listar todos los tickets (admins)
-        $group->get('/tickets', [$ticketController, 'listAllTickets']);
+        $group->get('/tickets', function ($request, $response) use ($repository) {
+            return $repository->listAllTickets($request, $response);
+        });
         
         // Ver detalles de un ticket
-        $group->get('/tickets/{id}', [$ticketController, 'getTicketDetails']);
+        $group->get('/tickets/{id}', function ($request, $response, $args) use ($repository) {
+            return $repository->getTicketDetails($request, $response, $args);
+        });
         
         // Actualizar estado de un ticket (admins)
-        $group->put('/tickets/{id}/status', [$ticketController, 'updateTicketStatus']);
+        $group->put('/tickets/{id}/status', function ($request, $response, $args) use ($repository) {
+            return $repository->updateTicketStatus($request, $response, $args);
+        });
         
         // Asignar ticket a un admin (admins)
-        $group->put('/tickets/{id}/assign', [$ticketController, 'assignTicket']);
+        $group->put('/tickets/{id}/assign', function ($request, $response, $args) use ($repository) {
+            return $repository->assignTicket($request, $response, $args);
+        });
         
         // Agregar comentario a un ticket
-        $group->post('/tickets/{id}/comments', [$ticketController, 'addComment']);
+        $group->post('/tickets/{id}/comments', function ($request, $response, $args) use ($repository) {
+            return $repository->addComment($request, $response, $args);
+        });
         
         // Ver historial de actividad de un ticket
-        $group->get('/tickets/{id}/history', [$ticketController, 'getTicketHistory']);
-        
+        $group->get('/tickets/{id}/history', function ($request, $response, $args) use ($repository) {
+            return $repository->getTicketHistory($request, $response, $args);
+        });
     })->add(new Token());
 };

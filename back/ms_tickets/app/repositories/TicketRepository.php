@@ -2,78 +2,90 @@
 
 namespace App\Repositories;
 
-use App\Models\Tickets;
+use App\Controllers\TicketController;
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
 
 class TicketRepository
 {
-    
-    /////////Crear un nuevo ticket
-    public function createTicket($data)
+    /**
+     * Crear un nuevo ticket (gestores)
+     */
+    public function createTicket(Request $request, Response $response)
     {
-        return Tickets::create($data);
+        $controller = new TicketController();
+        return $controller->createTicket($request, $response);
     }
 
-    /////////Obtener tickets de un gestor específico
-
-    public function getTicketsByGestor($gestorId)
+    /**
+     * Listar mis tickets (gestores)
+     */
+    public function listMyTickets(Request $request, Response $response)
     {
-        return Tickets::where('gestor_id', $gestorId)
-            ->with(['gestor', 'admin'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $controller = new TicketController();
+        return $controller->listMyTickets($request, $response);
     }
 
-    /////////Obtener todos los tickets
-    
-    public function getAllTickets()
+    /**
+     * Listar todos los tickets (admins)
+     */
+    public function listAllTickets(Request $request, Response $response)
     {
-        return Tickets::with(['gestor', 'admin'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $controller = new TicketController();
+        return $controller->listAllTickets($request, $response);
     }
 
-    
-    /////////Obtener un ticket por ID con relaciones
-    
-    public function getTicketById($id)
+    /**
+     * Ver detalles de un ticket
+     */
+    public function getTicketDetails(Request $request, Response $response, $args)
     {
-        return Tickets::with(['gestor', 'admin', 'actividades.usuario'])
-            ->find($id);
+        $controller = new TicketController();
+        return $controller->getTicketDetails($request, $response, $args);
     }
 
-    /////////Actualizar el estado de un ticket
-    
-    public function updateTicketStatus($id, $estado)
+    /**
+     * Actualizar estado de un ticket (admins)
+     */
+    public function updateTicketStatus(Request $request, Response $response, $args)
     {
-        return Tickets::where('id', $id)->update(['estado' => $estado]);
+        $controller = new TicketController();
+        return $controller->updateTicketStatus($request, $response, $args);
     }
 
-    
-    /////////Asignar un ticket a un admin
-    
-    public function assignTicket($id, $adminId)
+    /**
+     * Asignar ticket a un admin (admins)
+     */
+    public function assignTicket(Request $request, Response $response, $args)
     {
-        return Tickets::where('id', $id)->update(['admin_id' => $adminId]);
+        $controller = new TicketController();
+        return $controller->assignTicket($request, $response, $args);
     }
 
-    /////////Buscar tickets con filtros
-   
-    public function searchTickets($filters)
+    /**
+     * Agregar comentario a un ticket
+     */
+    public function addComment(Request $request, Response $response, $args)
     {
-        $query = Tickets::with(['gestor', 'admin']);
+        $controller = new TicketController();
+        return $controller->addComment($request, $response, $args);
+    }
 
-        if (isset($filters['estado'])) {
-            $query->where('estado', $filters['estado']);
-        }
+    /**
+     * Ver historial de actividad de un ticket
+     */
+    public function getTicketHistory(Request $request, Response $response, $args)
+    {
+        $controller = new TicketController();
+        return $controller->getTicketHistory($request, $response, $args);
+    }
 
-        if (isset($filters['gestor_id'])) {
-            $query->where('gestor_id', $filters['gestor_id']);
-        }
-
-        if (isset($filters['admin_id'])) {
-            $query->where('admin_id', $filters['admin_id']);
-        }
-
-        return $query->orderBy('created_at', 'desc')->get();
+    /**
+     * Buscar/filtrar tickets (admins)
+     */
+    public function searchTickets(Request $request, Response $response)
+    {
+        $controller = new TicketController();
+        return $controller->searchTickets($request, $response);
     }
 }

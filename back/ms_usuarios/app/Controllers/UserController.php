@@ -1,65 +1,64 @@
 <?php
 
 namespace App\Controllers;
-
-use App\Repositories\UserRepository;
 use App\Models\AToken;
 use App\Models\Users;
-use Slim\Psr7\Response;
+use Exception;
 
 class UserController
 {
-    protected $repo;
-
-    public function __construct()
+    /**
+     * Registrar un nuevo usuario
+     * @throws Exception
+     */
+    public function register($name, $email, $password, $role)
     {
-        $this->repo = new UserRepository();
-    }
-    //////////////// Registro de el usuario
-    public function register($request, $response)
-    {
-        $data = $request->getParsedBody();
-
-        // Validación
-        if (empty($data['name']) || empty($data['email']) || empty($data['password']) || empty($data['role'])) {
-            $response->getBody()->write(json_encode(['error' => 'Campos obligatorios faltantes'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(400);
+        // Validación de campos
+        if (empty($name) || empty($email) || empty($password) || empty($role)) {
+            throw new Exception("Campos obligatorios faltantes", 400);
         }
 
         // Verificar si email ya existe
-        if ($this->repo->getUserByEmail($data['email'])) {
-            $response->getBody()->write(json_encode(['error' => 'Email ya registrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(409); // estado de conflicto, para este caso es porque se duplicaria
+        if (Users::where('email', $email)->first()) {
+            throw new Exception("Email ya registrado", 409);
         }
 
-        $user = $this->repo->createUser($data);
-        $response->getBody()->write(json_encode($user, JSON_UNESCAPED_UNICODE));
-        return $response->withHeader('Content-Type', 'application/json');
+        // Crear usuario
+        $user = Users::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            'role' => $role
+        ]);
+
+        return $user->toArray();
     }
-    ///////INICIO DE SESIÓN
-    public function login($request, $response)
+
+    /**
+     * Iniciar sesión
+     * @throws Exception
+     */
+    public function login($email, $password)
     {
-        $data = $request->getParsedBody();
-
-        if (empty($data['email']) || empty($data['password'])) {
-            $response->getBody()->write(json_encode(['error' => 'Email y contraseña requeridos'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        if (empty($email) || empty($password)) {
+            throw new Exception("Email y contraseña requeridos", 400);
         }
 
-        $user = $this->repo->getUserByEmail($data['email']);
-        if (!$user || $user->password !== $data['password']) {
-            $response->getBody()->write(json_encode(['error' => 'Información incorrectas'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+        $user = Users::where('email', $email)->first();
+        
+        if (!$user || $user->password !== $password) {
+            throw new Exception("Información incorrectas", 401);
         }
 
+        // Generar token
         $token = bin2hex(random_bytes(16));
-
+        
         AToken::create([
             'user_id' => $user->id,
             'token' => $token
         ]);
 
-        $response->getBody()->write(json_encode([
+        return [
             'token' => $token,
             'user' => [
                 'id' => $user->id,
@@ -67,172 +66,146 @@ class UserController
                 'email' => $user->email,
                 'role' => $user->role
             ]
-        ], JSON_UNESCAPED_UNICODE));
-
-        return $response->withHeader('Content-Type', 'application/json');
+        ];
     }
-    /////////////////CERRAR SESIÓN
-    public function logout($request, $response)
+
+    /**
+     * Cerrar sesión
+     * @throws Exception
+     */
+    public function logout($token)
     {
-        $headers = $request->getHeaders();
-        $authHeader = $headers['Authorization'][0] ?? '';
+        if (empty($token)) {
+            throw new Exception("Token requerido", 400);
+        }
 
-        // Extraer token
-        $token = str_replace("Bearer ", "", $authHeader);
-        $token = trim($token);
-
-        // Eliminar el token de la base de datos
         $deleted = AToken::where('token', $token)->delete();
-
+        
         if ($deleted) {
-            $response->getBody()->write(json_encode(['message' => 'Sesión cerrada'], JSON_UNESCAPED_UNICODE));
+            return ['message' => 'Sesión cerrada'];
         } else {
-            $response->getBody()->write(json_encode(['message' => 'Sesión cerrada (token ya no existía)'], JSON_UNESCAPED_UNICODE));
+            return ['message' => 'Sesión cerrada (token ya no existía)'];
         }
-
-        return $response->withHeader('Content-Type', 'application/json');
     }
-    ///////// LISTAR USUARIO
-    public function listUsers($request, $response)
+
+    /**
+     * Listar todos los usuarios (solo admin)
+     * @throws Exception
+     */
+    public function getUsers($token)
     {
-        // Obtener Authorization de todas las fuentes posibles (igual que el middleware)
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        // Extraer token
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
+        // Verificar autenticación y rol
+        $user = $this->getUserFromToken($token);
+        
         if (!$user || !$user->isAdmin()) {
-            $response->getBody()->write(json_encode(['error' => 'Acceso denegado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+            throw new Exception("Acceso denegado", 403);
         }
 
-        $users = $this->repo->getAllUsers();
-        $response->getBody()->write(json_encode($users, JSON_UNESCAPED_UNICODE));
-        return $response->withHeader('Content-Type', 'application/json');
+        $users = Users::all();
+        return $users->toArray();
     }
-    /////////ACTUALIZAR USUARIOS
-    public function updateUser($request, $response, $args)
+
+    /**
+     * Actualizar usuario (solo admin)
+     * @throws Exception
+     */
+    public function updateUser($token, $userId, $data)
     {
-        $id = $args['id'];
-        $data = $request->getParsedBody();
-
-        // Obtener Authorization de todas las fuentes posibles (igual que el middleware)
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        // Extraer token
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
+        // Verificar autenticación y rol
+        $user = $this->getUserFromToken($token);
+        
         if (!$user || !$user->isAdmin()) {
-            $response->getBody()->write(json_encode(['error' => 'Acceso denegado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403);
+            throw new Exception("Acceso denegado", 403);
         }
 
         // Validación adicional: Si se incluye 'role', verificar que sea válido
         if (isset($data['role']) && !in_array($data['role'], ['gestor', 'admin'])) {
-            $response->getBody()->write(json_encode(['error' => 'Rol inválido'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(400);
+            throw new Exception("Rol inválido", 400);
         }
 
-        $updated = $this->repo->updateUser($id, $data);
-        if ($updated) {
-            $response->getBody()->write(json_encode(['message' => 'Usuario actualizado'], JSON_UNESCAPED_UNICODE));
-        } else {
-            $response->getBody()->write(json_encode(['error' => 'Usuario no encontrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(404);
+        $updated = Users::where('id', $userId)->update($data);
+        
+        if (!$updated) {
+            throw new Exception("Usuario no encontrado", 404);
         }
 
-        return $response->withHeader('Content-Type', 'application/json');
+        return ['message' => 'Usuario actualizado'];
     }
 
-    // Método agregado: Cambiar rol de un usuario
-    public function changeUserRole($request, $response, $args)
+    /**
+     * Cambiar rol de usuario (solo admin)
+     * @throws Exception
+     */
+    public function changeUserRole($token, $userId, $newRole)
     {
-        $id = $args['id'];
-        $data = $request->getParsedBody();
-
-        // Obtener Authorization de todas las fuentes posibles (igual que el middleware)
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        // Extraer token
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
+        // Verificar autenticación y rol
+        $user = $this->getUserFromToken($token);
+        
         if (!$user || !$user->isAdmin()) {
-            $response->getBody()->write(json_encode(['error' => 'Acceso denegado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403);
+            throw new Exception("Acceso denegado", 403);
         }
 
         // Validar que se envíe un rol válido
-        if (empty($data['role']) || !in_array($data['role'], ['gestor', 'admin'])) {
-            $response->getBody()->write(json_encode(['error' => 'Rol requerido e inválido'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(400);
+        if (empty($newRole) || !in_array($newRole, ['gestor', 'admin'])) {
+            throw new Exception("Rol requerido e inválido", 400);
         }
 
-        $updated = $this->repo->updateUser($id, ['role' => $data['role']]);
-        if ($updated) {
-            $response->getBody()->write(json_encode(['message' => 'Rol de usuario cambiado'], JSON_UNESCAPED_UNICODE));
-        } else {
-            $response->getBody()->write(json_encode(['error' => 'Usuario no encontrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(404);
+        $updated = Users::where('id', $userId)->update(['role' => $newRole]);
+        
+        if (!$updated) {
+            throw new Exception("Usuario no encontrado", 404);
         }
 
-        return $response->withHeader('Content-Type', 'application/json');
+        return ['message' => 'Rol de usuario cambiado'];
     }
-    //////// ELIMINAR USUARIOO
-    public function deleteUser($request, $response, $args)
+
+    /**
+     * Eliminar usuario (solo admin)
+     * @throws Exception
+     */
+    public function deleteUser($token, $userId)
     {
-        $id = $args['id'];
+        // Verificar autenticación y rol
+        $user = $this->getUserFromToken($token);
+        
+        if (!$user || !$user->isAdmin()) {
+            throw new Exception("Acceso denegado", 403);
+        }
 
-        // Obtener Authorization de todas las fuentes posibles 
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+        try {
+            $deleted = Users::destroy($userId);
+            
+            if (!$deleted) {
+                throw new Exception("Usuario no encontrado", 404);
+            }
 
-        // Extraer token
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
+            return ['message' => 'Usuario eliminado'];
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Capturar error de restricción de clave foránea (Foreign Key Constraint)
+            if ($e->getCode() == '23000') {
+                throw new Exception("No se puede eliminar este usuario porque tiene tickets asignados. Primero debe reasignar o eliminar los tickets asociados.", 409);
+            }
+            // Re-lanzar cualquier otra excepción de base de datos
+            throw new Exception("Error al eliminar usuario: " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Método auxiliar para obtener el usuario desde el token
+     * @throws Exception
+     */
+    private function getUserFromToken($token)
+    {
+        if (empty($token)) {
+            throw new Exception("Token requerido", 401);
         }
 
         $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        if (!$user || !$user->isAdmin()) {
-            $response->getBody()->write(json_encode(['error' => 'Acceso denegado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403);
+        
+        if (!$auth) {
+            throw new Exception("Token inválido", 401);
         }
 
-        $deleted = $this->repo->deleteUser($id);
-        if ($deleted) {
-            $response->getBody()->write(json_encode(['message' => 'Usuario eliminado'], JSON_UNESCAPED_UNICODE));
-        } else {
-            $response->getBody()->write(json_encode(['error' => 'Usuario no encontrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(404);
-        }
-
-        return $response->withHeader('Content-Type', 'application/json');
+        return Users::find($auth->user_id);
     }
 }

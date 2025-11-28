@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use App\Repositories\TicketRepository;
+use App\Repositories\TicketDataRepository;
 use App\Repositories\TicketActividadRepository;
 use App\Models\AToken;
 use App\Models\Users;
@@ -15,399 +15,288 @@ class TicketController
 
     public function __construct()
     {
-        $this->ticketRepo = new TicketRepository();
+        $this->ticketRepo = new TicketDataRepository();
         $this->actividadRepo = new TicketActividadRepository();
     }
 
-    ///////////Crear un nuevo ticket (gestores)
+    // ==================== MÉTODOS PÚBLICOS ====================
+
+    /**
+     * Crear un nuevo ticket (gestores)
+     */
     public function createTicket($request, $response)
     {
         $data = $request->getParsedBody();
+        $user = $this->getUserFromRequest($request);
 
-        //Obtener usuario desde token
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+        // Verificar que sea un gestor
+        $this->requireGestorRole($user);
 
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        //Verificar que sea un gestor
-        if (!$user || $user->role !== 'gestor') {
-            $response->getBody()->write(json_encode(['error' => 'Solo los gestores pueden crear tickets'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
-        }
-
-        //Validación básica
+        // Validación básica
         if (empty($data['titulo']) || empty($data['descripcion'])) {
-            $response->getBody()->write(json_encode(['error' => 'Título y descripción son obligatorios'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'Título y descripción son obligatorios', 400);
         }
 
-        //Crear ticket
-        $ticketData = [
+        // Crear ticket
+        $ticket = $this->ticketRepo->createTicket([
             'titulo' => $data['titulo'],
             'descripcion' => $data['descripcion'],
             'estado' => 'abierto',
             'gestor_id' => $user->id
-        ];
+        ]);
 
-        $ticket = $this->ticketRepo->createTicket($ticketData);
+        // Registrar actividad inicial
+        $this->actividadRepo->addActivity($ticket->id, $user->id, 'Ticket creado: ' . $data['titulo']);
 
-        //Registrar actividad inicial
-        $this->actividadRepo->addActivity(
-            $ticket->id,
-            $user->id,
-            'Ticket creado: ' . $data['titulo']
-        );
-
-        $response->getBody()->write(json_encode($ticket, JSON_UNESCAPED_UNICODE));
-        return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
+        return $this->successResponse($response, $ticket, 201);
     }
-    ////////////// Listar mis tickets (gestores)
 
+    /**
+     * Listar mis tickets (gestores)
+     */
     public function listMyTickets($request, $response)
     {
-        //Obtener usuario desde token
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        if (!$user || $user->role !== 'gestor') {
-            $response->getBody()->write(json_encode(['error' => 'Solo los gestores pueden ver sus tickets'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
-        }
+        $user = $this->getUserFromRequest($request);
+        $this->requireGestorRole($user);
 
         $tickets = $this->ticketRepo->getTicketsByGestor($user->id);
-        $response->getBody()->write(json_encode($tickets, JSON_UNESCAPED_UNICODE));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->successResponse($response, $tickets);
     }
 
-     //////////Listar todos los tickets (admins)
-  
+    /**
+     * Listar todos los tickets (admins)
+     */
     public function listAllTickets($request, $response)
     {
-        // Obtener usuario desde token
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        if (!$user || $user->role !== 'admin') {
-            $response->getBody()->write(json_encode(['error' => 'Solo los administradores pueden ver todos los tickets'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
-        }
+        $user = $this->getUserFromRequest($request);
+        $this->requireAdminRole($user);
 
         $tickets = $this->ticketRepo->getAllTickets();
-        $response->getBody()->write(json_encode($tickets, JSON_UNESCAPED_UNICODE));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->successResponse($response, $tickets);
     }
 
-    ////////////////////Ver detalles de un ticket
+    /**
+     * Ver detalles de un ticket
+     */
     public function getTicketDetails($request, $response, $args)
     {
         $ticketId = $args['id'];
-
-        //Obtener usuario desde token
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        if (!$user) {
-            $response->getBody()->write(json_encode(['error' => 'Usuario no autenticado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
-        }
+        $user = $this->getUserFromRequest($request);
 
         $ticket = $this->ticketRepo->getTicketById($ticketId);
-
+        
         if (!$ticket) {
-            $response->getBody()->write(json_encode(['error' => 'Ticket no encontrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'Ticket no encontrado', 404);
         }
 
-        //Si es gestor, solo puede ver sus propios tickets
+        // Si es gestor, solo puede ver sus propios tickets
         if ($user->role === 'gestor' && $ticket->gestor_id != $user->id) {
-            $response->getBody()->write(json_encode(['error' => 'No tienes permiso para ver este ticket'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'No tienes permiso para ver este ticket', 403);
         }
 
-        $response->getBody()->write(json_encode($ticket, JSON_UNESCAPED_UNICODE));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->successResponse($response, $ticket);
     }
 
-    ////////////////////// Actualizar estado de un ticket (admins)
-
+    /**
+     * Actualizar estado de un ticket (admins)
+     */
     public function updateTicketStatus($request, $response, $args)
     {
         $ticketId = $args['id'];
         $data = $request->getParsedBody();
+        $user = $this->getUserFromRequest($request);
 
-        //Obtener usuario desde token
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+        $this->requireAdminRole($user);
 
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        if (!$user || $user->role !== 'admin') {
-            $response->getBody()->write(json_encode(['error' => 'Solo los administradores pueden cambiar el estado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
-        }
-
-        //Validar estado
+        // Validar estado
         $estadosValidos = ['abierto', 'en_progreso', 'resuelto', 'cerrado'];
         if (empty($data['estado']) || !in_array($data['estado'], $estadosValidos)) {
-            $response->getBody()->write(json_encode(['error' => 'Estado inválido. Valores permitidos: abierto, en_progreso, resuelto, cerrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'Estado inválido. Valores permitidos: abierto, en_progreso, resuelto, cerrado', 400);
         }
 
         $ticket = $this->ticketRepo->getTicketById($ticketId);
         if (!$ticket) {
-            $response->getBody()->write(json_encode(['error' => 'Ticket no encontrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'Ticket no encontrado', 404);
         }
 
         $updated = $this->ticketRepo->updateTicketStatus($ticketId, $data['estado']);
 
         if ($updated) {
-            //Registrar actividad
-            $this->actividadRepo->addActivity(
-                $ticketId,
-                $user->id,
-                'Estado cambiado a: ' . $data['estado']
-            );
-
-            $response->getBody()->write(json_encode(['message' => 'Estado actualizado correctamente'], JSON_UNESCAPED_UNICODE));
-        } else {
-            $response->getBody()->write(json_encode(['error' => 'Error al actualizar el estado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+            $this->actividadRepo->addActivity($ticketId, $user->id, 'Estado cambiado a: ' . $data['estado']);
+            return $this->successResponse($response, ['message' => 'Estado actualizado correctamente']);
         }
 
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->errorResponse($response, 'Error al actualizar el estado', 500);
     }
 
-    //////////////////Asignar ticket a un admin (admins)
+    /**
+     * Asignar ticket a un admin (admins)
+     */
     public function assignTicket($request, $response, $args)
     {
         $ticketId = $args['id'];
         $data = $request->getParsedBody();
+        $user = $this->getUserFromRequest($request);
 
-        //Obtener usuario desde token
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        if (!$user || $user->role !== 'admin') {
-            $response->getBody()->write(json_encode(['error' => 'Solo los administradores pueden asignar tickets'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
-        }
+        $this->requireAdminRole($user);
 
         if (empty($data['admin_id'])) {
-            $response->getBody()->write(json_encode(['error' => 'admin_id es obligatorio'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'admin_id es obligatorio', 400);
         }
 
-        //Verificar que el admin existe y es admin
+        // Verificar que el admin existe y es admin
         $admin = Users::find($data['admin_id']);
         if (!$admin || $admin->role !== 'admin') {
-            $response->getBody()->write(json_encode(['error' => 'El usuario especificado no es un administrador'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'El usuario especificado no es un administrador', 400);
         }
 
         $ticket = $this->ticketRepo->getTicketById($ticketId);
         if (!$ticket) {
-            $response->getBody()->write(json_encode(['error' => 'Ticket no encontrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'Ticket no encontrado', 404);
         }
 
         $updated = $this->ticketRepo->assignTicket($ticketId, $data['admin_id']);
 
         if ($updated) {
-            //Registrar actividad
-            $this->actividadRepo->addActivity(
-                $ticketId,
-                $user->id,
-                'Ticket asignado a: ' . $admin->name
-            );
-
-            $response->getBody()->write(json_encode(['message' => 'Ticket asignado correctamente'], JSON_UNESCAPED_UNICODE));
-        } else {
-            $response->getBody()->write(json_encode(['error' => 'Error al asignar el ticket'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+            $this->actividadRepo->addActivity($ticketId, $user->id, 'Ticket asignado a: ' . $admin->name);
+            return $this->successResponse($response, ['message' => 'Ticket asignado correctamente']);
         }
 
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->errorResponse($response, 'Error al asignar el ticket', 500);
     }
 
-    /////////////Agregar comentario a un ticket
+    /**
+     * Agregar comentario a un ticket
+     */
     public function addComment($request, $response, $args)
     {
         $ticketId = $args['id'];
         $data = $request->getParsedBody();
-
-        //Obtener usuario desde token
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        if (!$user) {
-            $response->getBody()->write(json_encode(['error' => 'Usuario no autenticado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
-        }
+        $user = $this->getUserFromRequest($request);
 
         $ticket = $this->ticketRepo->getTicketById($ticketId);
         if (!$ticket) {
-            $response->getBody()->write(json_encode(['error' => 'Ticket no encontrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'Ticket no encontrado', 404);
         }
 
-        //Si es gestor, solo puede comentar en sus propios tickets
+        // Si es gestor, solo puede comentar en sus propios tickets
         if ($user->role === 'gestor' && $ticket->gestor_id != $user->id) {
-            $response->getBody()->write(json_encode(['error' => 'No tienes permiso para comentar en este ticket'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'No tienes permiso para comentar en este ticket', 403);
         }
 
         if (empty($data['mensaje'])) {
-            $response->getBody()->write(json_encode(['error' => 'El mensaje es obligatorio'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'El mensaje es obligatorio', 400);
         }
 
-        $actividad = $this->actividadRepo->addActivity(
-            $ticketId,
-            $user->id,
-            $data['mensaje']
-        );
+        $actividad = $this->actividadRepo->addActivity($ticketId, $user->id, $data['mensaje']);
 
-        $response->getBody()->write(json_encode($actividad, JSON_UNESCAPED_UNICODE));
-        return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
+        return $this->successResponse($response, $actividad, 201);
     }
 
-//////////// Ver historial de actividad de un ticket
+    /**
+     * Ver historial de actividad de un ticket
+     */
     public function getTicketHistory($request, $response, $args)
     {
         $ticketId = $args['id'];
-
-        //Obtener usuario desde token
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        if (!$user) {
-            $response->getBody()->write(json_encode(['error' => 'Usuario no autenticado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
-        }
+        $user = $this->getUserFromRequest($request);
 
         $ticket = $this->ticketRepo->getTicketById($ticketId);
         if (!$ticket) {
-            $response->getBody()->write(json_encode(['error' => 'Ticket no encontrado'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'Ticket no encontrado', 404);
         }
 
-        //Si es gestor, solo puede ver el historial de sus propios tickets
+        // Si es gestor, solo puede ver el historial de sus propios tickets
         if ($user->role === 'gestor' && $ticket->gestor_id != $user->id) {
-            $response->getBody()->write(json_encode(['error' => 'No tienes permiso para ver el historial de este ticket'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+            return $this->errorResponse($response, 'No tienes permiso para ver el historial de este ticket', 403);
         }
 
         $history = $this->actividadRepo->getTicketHistory($ticketId);
-        $response->getBody()->write(json_encode($history, JSON_UNESCAPED_UNICODE));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->successResponse($response, $history);
     }
-     ///////////////////Busca y filtrar tickets (admins)
-  
+
+    /**
+     * Buscar y filtrar tickets (admins)
+     */
     public function searchTickets($request, $response)
     {
-        //Obtener usuario desde token
-        $authHeader =
-            $request->getHeaderLine('Authorization') ?: ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = trim($matches[1]);
-        } else {
-            $token = trim($authHeader);
-        }
-
-        $auth = AToken::where('token', $token)->first();
-        $user = $auth ? Users::find($auth->user_id) : null;
-
-        if (!$user || $user->role !== 'admin') {
-            $response->getBody()->write(json_encode(['error' => 'Solo los administradores pueden buscar tickets'], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
-        }
+        $user = $this->getUserFromRequest($request);
+        $this->requireAdminRole($user);
 
         $params = $request->getQueryParams();
         $filters = [];
 
-        if (isset($params['estado'])) {
-            $filters['estado'] = $params['estado'];
-        }
-        if (isset($params['gestor_id'])) {
-            $filters['gestor_id'] = $params['gestor_id'];
-        }
-        if (isset($params['admin_id'])) {
-            $filters['admin_id'] = $params['admin_id'];
-        }
+        if (isset($params['estado'])) $filters['estado'] = $params['estado'];
+        if (isset($params['gestor_id'])) $filters['gestor_id'] = $params['gestor_id'];
+        if (isset($params['admin_id'])) $filters['admin_id'] = $params['admin_id'];
 
         $tickets = $this->ticketRepo->searchTickets($filters);
-        $response->getBody()->write(json_encode($tickets, JSON_UNESCAPED_UNICODE));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $this->successResponse($response, $tickets);
+    }
+
+    // ==================== MÉTODOS AUXILIARES PRIVADOS ====================
+
+    /**
+     * Extraer token del request
+     */
+    private function extractTokenFromRequest($request)
+    {
+        $authHeader = 
+            $request->getHeaderLine('Authorization') ?: 
+            ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: 
+            ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+
+        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            return trim($matches[1]);
+        }
+        
+        return trim($authHeader);
+    }
+
+    /**
+     * Obtener usuario desde el request
+     */
+    private function getUserFromRequest($request)
+    {
+        $token = $this->extractTokenFromRequest($request);
+        $auth = AToken::where('token', $token)->first();
+        return $auth ? Users::find($auth->user_id) : null;
+    }
+
+    /**
+     * Verificar que el usuario sea gestor
+     */
+    private function requireGestorRole($user)
+    {
+        if (!$user || $user->role !== 'gestor') {
+            throw new \Exception('Solo los gestores pueden realizar esta acción');
+        }
+    }
+
+    /**
+     * Verificar que el usuario sea admin
+     */
+    private function requireAdminRole($user)
+    {
+        if (!$user || $user->role !== 'admin') {
+            throw new \Exception('Solo los administradores pueden realizar esta acción');
+        }
+    }
+
+    /**
+     * Respuesta de éxito
+     */
+    private function successResponse($response, $data, $statusCode = 200)
+    {
+        $response->getBody()->write(json_encode($data, JSON_UNESCAPED_UNICODE));
+        return $response->withStatus($statusCode)->withHeader('Content-Type', 'application/json');
+    }
+
+    //Respuesta de error
+    
+    private function errorResponse($response, $message, $statusCode = 400)
+    {
+        $response->getBody()->write(json_encode(['error' => $message], JSON_UNESCAPED_UNICODE));
+        return $response->withStatus($statusCode)->withHeader('Content-Type', 'application/json');
     }
 }

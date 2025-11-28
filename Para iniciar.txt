@@ -1,0 +1,11 @@
+Para iniciar 
+para iniciar ms de usuarios
+php -S 127.0.0.1:8000 -t public 
+
+para iniciar ms de tickets
+php -S 127.0.0.1:8001 -t public 
+
+GESTOR
+gestor1@example.com, password123
+ADMINISTRADOR
+admin1@example.com, password123
