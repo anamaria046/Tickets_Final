@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Guardar token y datos del usuario
             if (response.token) {
-                saveToken(response.token);
+                saveToken(response.token); 
             }
 
             if (response.user) {

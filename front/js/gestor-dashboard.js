@@ -1,83 +1,50 @@
-// Lógica del Dashboard del Gestor
 
 let currentTicketId = null;
 
-document.addEventListener('DOMContentLoaded', function () {
-    // Verificar autenticación
-    if (!checkAuth()) {
-        return;
-    }
-
-    // Verificar que sea gestor
-    if (!checkRole('gestor')) {
-        return;
-    }
-
-    // Inicializar
+// Inicialización
+document.addEventListener('DOMContentLoaded', () => {
+    if (!checkAuth() || !checkRole('gestor')) return;
     init();
 });
 
 function init() {
-    // Mostrar nombre del usuario
     const userName = getUserName();
-    if (userName) {
-        document.getElementById('userName').textContent = userName;
-    }
-
-    // Event listeners
+    if (userName) document.getElementById('userName').textContent = userName;
     setupEventListeners();
-
-    // Cargar tickets inicialmente
     loadMyTickets();
 }
 
 function setupEventListeners() {
     // Navegación
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
-        item.addEventListener('click', function () {
-            const section = this.dataset.section;
-            switchSection(section);
-        });
-    });
+    document.querySelectorAll('.nav-item').forEach(item => 
+        item.addEventListener('click', () => switchSection(item.dataset.section))
+    );
 
-    // Logout
+    // Acciones
     document.getElementById('logoutBtn').addEventListener('click', logout);
-
-    // Crear ticket
     document.getElementById('createTicketForm').addEventListener('submit', handleCreateTicket);
+    document.getElementById('addCommentForm').addEventListener('submit', handleAddComment);
 
     // Modal
+    const modal = document.getElementById('ticketModal');
     document.getElementById('closeModal').addEventListener('click', closeTicketModal);
-    document.getElementById('ticketModal').addEventListener('click', function (e) {
-        if (e.target === this) {
-            closeTicketModal();
-        }
-    });
-
-    // Agregar comentario
-    document.getElementById('addCommentForm').addEventListener('submit', handleAddComment);
+    modal.addEventListener('click', e => e.target === modal && closeTicketModal());
 }
 
 function switchSection(sectionName) {
     // Actualizar navegación
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        if (item.dataset.section === sectionName) {
-            item.classList.add('active');
-        }
-    });
+    document.querySelectorAll('.nav-item').forEach(item => 
+        item.classList.toggle('active', item.dataset.section === sectionName)
+    );
 
     // Actualizar secciones
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.remove('active');
-    });
+    document.querySelectorAll('.content-section').forEach(section => 
+        section.classList.remove('active')
+    );
     document.getElementById(`section-${sectionName}`).classList.add('active');
 
     // Cargar datos si es necesario
-    if (sectionName === 'mis-tickets') {
-        loadMyTickets();
-    }
+    if (sectionName === 'mis-tickets') loadMyTickets();
 }
 
 async function handleCreateTicket(e) {
@@ -89,26 +56,16 @@ async function handleCreateTicket(e) {
     const messageDiv = document.getElementById('createMessage');
 
     if (!titulo || !descripcion) {
-        showMessage(messageDiv, 'Por favor completa todos los campos', 'error');
-        return;
+        return showMessage(messageDiv, 'Por favor completa todos los campos', 'error');
     }
 
     setButtonLoading(createBtn, true);
 
     try {
-        const ticketData = { titulo, descripcion };
-        await createTicket(ticketData);
-
+        await createTicket({ titulo, descripcion });
         showMessage(messageDiv, 'Ticket creado exitosamente', 'success');
-
-        // Limpiar formulario
         document.getElementById('createTicketForm').reset();
-
-        // Recargar tickets
-        setTimeout(() => {
-            switchSection('mis-tickets');
-        }, 1500);
-
+        setTimeout(() => switchSection('mis-tickets'), 1500);
     } catch (error) {
         console.error('Error al crear ticket:', error);
         showMessage(messageDiv, error.message || 'Error al crear el ticket', 'error');
@@ -118,38 +75,29 @@ async function handleCreateTicket(e) {
 }
 
 async function loadMyTickets() {
-    const loadingDiv = document.getElementById('ticketsLoading');
-    const containerDiv = document.getElementById('ticketsContainer');
-    const noTicketsDiv = document.getElementById('noTickets');
+    const { ticketsLoading, ticketsContainer, noTickets } = getElements([
+        'ticketsLoading', 'ticketsContainer', 'noTickets'
+    ]);
 
-    loadingDiv.style.display = 'flex';
-    containerDiv.innerHTML = '';
-    noTicketsDiv.style.display = 'none';
+    ticketsLoading.style.display = 'flex';
+    ticketsContainer.innerHTML = '';
+    noTickets.style.display = 'none';
 
     try {
         const tickets = await listMyTickets();
+        ticketsLoading.style.display = 'none';
 
-        loadingDiv.style.display = 'none';
-
-        if (!tickets || tickets.length === 0) {
-            noTicketsDiv.style.display = 'block';
+        if (!tickets?.length) {
+            noTickets.style.display = 'block';
             return;
         }
 
-        containerDiv.innerHTML = tickets.map(ticket => createTicketCard(ticket)).join('');
-
-        // Agregar event listeners a las cards
-        document.querySelectorAll('.ticket-card').forEach(card => {
-            card.addEventListener('click', function () {
-                const ticketId = this.dataset.ticketId;
-                openTicketModal(ticketId);
-            });
-        });
-
+        ticketsContainer.innerHTML = tickets.map(createTicketCard).join('');
+        attachTicketCardListeners();
     } catch (error) {
         console.error('Error al cargar tickets:', error);
-        loadingDiv.style.display = 'none';
-        containerDiv.innerHTML = `
+        ticketsLoading.style.display = 'none';
+        ticketsContainer.innerHTML = `
             <div class="alert alert-error">
                 Error al cargar los tickets: ${error.message}
             </div>
@@ -159,22 +107,25 @@ async function loadMyTickets() {
 
 function createTicketCard(ticket) {
     const estadoClass = ticket.estado.replace('_', '-');
-    const estadoBadge = getEstadoBadge(ticket.estado);
-    const fecha = formatDate(ticket.created_at);
-
     return `
         <div class="ticket-card estado-${estadoClass}" data-ticket-id="${ticket.id}">
             <div class="ticket-header">
                 <span class="ticket-id">#${ticket.id}</span>
-                ${estadoBadge}
+                ${getEstadoBadge(ticket.estado)}
             </div>
             <h3 class="ticket-title">${escapeHtml(ticket.titulo)}</h3>
             <p class="ticket-description">${escapeHtml(ticket.descripcion)}</p>
             <div class="ticket-footer">
-                <span class="ticket-date">📅 ${fecha}</span>
+                <span class="ticket-date">📅 ${formatDate(ticket.created_at)}</span>
             </div>
         </div>
     `;
+}
+
+function attachTicketCardListeners() {
+    document.querySelectorAll('.ticket-card').forEach(card => 
+        card.addEventListener('click', () => openTicketModal(card.dataset.ticketId))
+    );
 }
 
 async function openTicketModal(ticketId) {
@@ -188,14 +139,13 @@ async function openTicketModal(ticketId) {
     historyDiv.innerHTML = '';
 
     try {
-        // Cargar detalles del ticket
-        const ticket = await getTicketDetails(ticketId);
+        const [ticket, history] = await Promise.all([
+            getTicketDetails(ticketId),
+            getTicketHistory(ticketId)
+        ]);
+        
         detailsDiv.innerHTML = createTicketDetails(ticket);
-
-        // Cargar historial
-        const history = await getTicketHistory(ticketId);
-        historyDiv.innerHTML = history.map(item => createHistoryItem(item)).join('');
-
+        historyDiv.innerHTML = history.map(createHistoryItem).join('');
     } catch (error) {
         console.error('Error al cargar detalles:', error);
         detailsDiv.innerHTML = `
@@ -207,28 +157,16 @@ async function openTicketModal(ticketId) {
 }
 
 function createTicketDetails(ticket) {
-    const estadoBadge = getEstadoBadge(ticket.estado);
-    const fecha = formatDate(ticket.created_at);
-
     return `
         <div class="ticket-detail-header">
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <h3 class="ticket-detail-title">${escapeHtml(ticket.titulo)}</h3>
-                ${estadoBadge}
+                ${getEstadoBadge(ticket.estado)}
             </div>
             <div class="ticket-meta">
-                <div class="meta-item">
-                    <span class="meta-label">ID</span>
-                    <span class="meta-value">#${ticket.id}</span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-label">Fecha de Creación</span>
-                    <span class="meta-value">${fecha}</span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-label">Estado</span>
-                    <span class="meta-value">${formatEstado(ticket.estado)}</span>
-                </div>
+                ${createMetaItem('ID', `#${ticket.id}`)}
+                ${createMetaItem('Fecha de Creación', formatDate(ticket.created_at))}
+                ${createMetaItem('Estado', formatEstado(ticket.estado))}
             </div>
         </div>
         <div class="ticket-detail-description">
@@ -239,13 +177,11 @@ function createTicketDetails(ticket) {
 }
 
 function createHistoryItem(item) {
-    const fecha = formatDate(item.created_at);
-
     return `
         <div class="history-item">
             <div class="history-header">
                 <span class="history-user">👤 Usuario #${item.user_id}</span>
-                <span class="history-date">${fecha}</span>
+                <span class="history-date">${formatDate(item.created_at)}</span>
             </div>
             <div class="history-message">${escapeHtml(item.mensaje)}</div>
         </div>
@@ -254,28 +190,17 @@ function createHistoryItem(item) {
 
 async function handleAddComment(e) {
     e.preventDefault();
-
     if (!currentTicketId) return;
 
     const comentario = document.getElementById('comentario').value.trim();
-    const form = e.target;
-
-    if (!comentario) {
-        alert('Por favor escribe un comentario');
-        return;
-    }
+    if (!comentario) return alert('Por favor escribe un comentario');
 
     try {
         await addComment(currentTicketId, comentario);
+        e.target.reset();
 
-        // Limpiar formulario
-        form.reset();
-
-        // Recargar historial
         const history = await getTicketHistory(currentTicketId);
-        const historyDiv = document.getElementById('ticketHistory');
-        historyDiv.innerHTML = history.map(item => createHistoryItem(item)).join('');
-
+        document.getElementById('ticketHistory').innerHTML = history.map(createHistoryItem).join('');
     } catch (error) {
         console.error('Error al agregar comentario:', error);
         alert('Error al agregar comentario: ' + error.message);
@@ -288,31 +213,30 @@ function closeTicketModal() {
     document.getElementById('addCommentForm').reset();
 }
 
-// Utilidades
+// UTILIDADES
 function getEstadoBadge(estado) {
     const badges = {
-        'abierto': '<span class="badge badge-primary">Abierto</span>',
-        'en_progreso': '<span class="badge badge-warning">En Progreso</span>',
-        'resuelto': '<span class="badge badge-success">Resuelto</span>',
-        'cerrado': '<span class="badge badge-secondary">Cerrado</span>'
+        abierto: '<span class="badge badge-primary">Abierto</span>',
+        en_progreso: '<span class="badge badge-warning">En Progreso</span>',
+        resuelto: '<span class="badge badge-success">Resuelto</span>',
+        cerrado: '<span class="badge badge-secondary">Cerrado</span>'
     };
     return badges[estado] || '<span class="badge">Desconocido</span>';
 }
 
 function formatEstado(estado) {
     const estados = {
-        'abierto': 'Abierto',
-        'en_progreso': 'En Progreso',
-        'resuelto': 'Resuelto',
-        'cerrado': 'Cerrado'
+        abierto: 'Abierto',
+        en_progreso: 'En Progreso',
+        resuelto: 'Resuelto',
+        cerrado: 'Cerrado'
     };
     return estados[estado] || estado;
 }
 
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
+    return new Date(dateString).toLocaleDateString('es-ES', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -331,18 +255,24 @@ function showMessage(element, text, type) {
     element.textContent = text;
     element.className = `alert alert-${type}`;
     element.style.display = 'block';
-
-    setTimeout(() => {
-        element.style.display = 'none';
-    }, 5000);
+    setTimeout(() => element.style.display = 'none', 5000);
 }
 
 function setButtonLoading(button, loading) {
-    if (loading) {
-        button.disabled = true;
-        button.classList.add('btn-loading');
-    } else {
-        button.disabled = false;
-        button.classList.remove('btn-loading');
-    }
+    button.disabled = loading;
+    button.classList.toggle('btn-loading', loading);
+}
+
+// Helpers
+function getElements(ids) {
+    return ids.reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id) }), {});
+}
+
+function createMetaItem(label, value) {
+    return `
+        <div class="meta-item">
+            <span class="meta-label">${label}</span>
+            <span class="meta-value">${value}</span>
+        </div>
+    `;
 }

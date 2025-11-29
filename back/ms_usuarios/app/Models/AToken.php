@@ -10,7 +10,7 @@ class AToken extends Model
     protected $fillable = ['user_id', 'token'];
     public $timestamps = true;
 
-    // Relación con usuario
+    ///Relación con usuario
     public function user()
     {
         return $this->belongsTo(Users::class, 'user_id');

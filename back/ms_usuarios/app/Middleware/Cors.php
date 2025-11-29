@@ -8,14 +8,8 @@ use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 
 class Cors
 {
-    /**
-     * Middleware de CORS
-     * Permite peticiones cross-origin desde cualquier origen
-     *
-     * @param Request $request
-     * @param RequestHandler $handler
-     * @return Response
-     */
+    /////// Middleware de CORS Permite peticiones cross-origin desde cualquier origen
+ 
     public function __invoke(Request $request, RequestHandler $handler): Response
     {
         $response = $handler->handle($request);

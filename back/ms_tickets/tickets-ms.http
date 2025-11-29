@@ -1,6 +1,6 @@
-### 1. Crear Ticket (Solo Gestores)
+### 1.Crear Ticket (Gestores)
 POST http://localhost:8001/tickets
-Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
+Authorization: Bearer ebcc35c3998d90509d88cd196d65f687
 Content-Type: application/json
 
 {
@@ -8,23 +8,40 @@ Content-Type: application/json
   "descripcion": "Los archivos PDF no se cargan correctamente en el módulo de documentos"
 }
 
-### 2. Listar Mis Tickets (Solo Gestores)
+### 2.Listar Mis Tickets (Gestores)
 GET http://localhost:8001/tickets/my
-Authorization: Bearer token_gestor_1_abc123
+Authorization: Bearer ebcc35c3998d90509d88cd196d65f687
 Content-Type: application/json
 
-### 3. Listar Todos los Tickets (Solo Admins)
+########OPERACIONES DE ADMINISTRADORES
+
+### 3.Listar Todos los Tickets 
 GET http://localhost:8001/tickets
 Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
 
-### 4. Ver Detalles de un Ticket
-# Gestor:solo sus tickets | Admin: todos
-GET http://localhost:8001/tickets/1
+### 4.Buscar/Filtrar Tickets 
+GET http://localhost:8001/tickets/search?estado=abierto
 Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
 
-### 5. Actualizar Estado de un Ticket (Solo Admins)
+### 5.Buscar por Gestor
+GET http://localhost:8001/tickets/search?gestor_id=1
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
+Content-Type: application/json
+
+### 6.Buscar por Admin Asignado
+GET http://localhost:8001/tickets/search?admin_id=3
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
+Content-Type: application/json
+
+### 7.Buscar con Múltiples Filtros
+GET http://localhost:8001/tickets/search?estado=en_progreso&admin_id=3
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
+Content-Type: application/json
+
+### 8.Actualizar Estado de un Ticket
+# Estados válidos: abierto, en_progreso, resuelto, cerrado
 PUT http://localhost:8001/tickets/1/status
 Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
@@ -33,7 +50,7 @@ Content-Type: application/json
   "estado": "en_progreso"
 }
 
-### 6. Asignar Ticket a un Admin (Solo Admins)
+### 9.Asignar Ticket a un Admin (Solo Admins)
 PUT http://localhost:8001/tickets/1/assign
 Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
@@ -41,56 +58,46 @@ Content-Type: application/json
 {
   "admin_id": 3
 }
-### 7. Agregar Comentario a un Ticket
+
+### 10. Ver Detalles de un Ticket
+# Gestor: solo sus tickets | Admin: todos
+GET http://localhost:8001/tickets/1
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
+Content-Type: application/json
+
+### 11. Agregar Comentario a un Ticket
+# Gestor: solo sus tickets | Admin: todos
 POST http://localhost:8001/tickets/1/comments
 Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
+
 {
-  "mensaje": "el problema parece ser un error de permisos en el servidor"
+  "mensaje": "El problema parece ser un error de permisos en el servidor"
 }
 
-### 8. Ver Historial de Actividad de un Ticket
+### 12. Ver Historial de Actividad de un Ticket
+# Gestor: solo sus tickets | Admin: todos
 GET http://localhost:8001/tickets/1/history
-Authorization: Bearer accd798e4c53d5cb78119f008c86fbc9
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
 
-### 9. Buscar/Filtrar Tickets (Solo Admins)
-# Filtros disponibles: estado, gestor_id, admin_id
-GET http://localhost:8001/tickets/search?estado=abierto
-Authorization: Bearer token_admin_1_xyz789
-Content-Type: application/json
+###############CASOS DE ERROR
 
-### 10. Buscar por Gestor
-GET http://localhost:8001/tickets/search?gestor_id=1
-Authorization: Bearer token_admin_1_xyz789
-Content-Type: application/json
-
-### 11. Buscar por Admin Asignado
-GET http://localhost:8001/tickets/search?admin_id=3
-Authorization: Bearer token_admin_1_xyz789
-Content-Type: application/json
-
-### 12. Buscar con Múltiples Filtros
-GET http://localhost:8001/tickets/search?estado=en_progreso&admin_id=3
-Authorization: Bearer token_admin_1_xyz789
-Content-Type: application/json
-
-
-### 13. Error: Acceso Sin Token
+### 13.Error: Acceso Sin Token
 GET http://localhost:8001/tickets
 Content-Type: application/json
 
-### 14. Error: Token Inválido
+### 14.Error: Token Inválido
 GET http://localhost:8001/tickets
 Authorization: Bearer token_falso_123
 Content-Type: application/json
 
-### 15. Error: Gestor Intentando Ver Todos los Tickets
+### 15.Error: Gestor Intentando Ver Todos los Tickets
 GET http://localhost:8001/tickets
 Authorization: Bearer ebcc35c3998d90509d88cd196d65f687
 Content-Type: application/json
 
-### 16. Error: Gestor Intentando Cambiar Estado
+### 16.Error: Gestor Intentando Cambiar Estado
 PUT http://localhost:8001/tickets/1/status
 Authorization: Bearer ebcc35c3998d90509d88cd196d65f687
 Content-Type: application/json
@@ -99,7 +106,7 @@ Content-Type: application/json
   "estado": "cerrado"
 }
 
-### 17. Error: Crear Ticket Sin Título
+### 17.Error: Crear Ticket Sin Título
 POST http://localhost:8001/tickets
 Authorization: Bearer ebcc35c3998d90509d88cd196d65f687
 Content-Type: application/json
@@ -110,9 +117,13 @@ Content-Type: application/json
 
 ### 18. Error: Estado Inválido
 PUT http://localhost:8001/tickets/1/status
-Authorization: Bearer token_admin_1_xyz789
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
 
 {
   "estado": "estado_invalido"
 }
+
+
+
+

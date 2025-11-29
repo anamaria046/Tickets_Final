@@ -62,7 +62,7 @@ async function register(userData) {
     return await apiRequest(url, {
         method: 'POST',
         body: JSON.stringify(userData),
-        skipAuth: true
+        skipAuth: true //no se incluye el token en la peticion y se usa cuando Login, registro o endpoints públicos
     });
 }
 

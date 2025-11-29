@@ -11,15 +11,15 @@ $endpoints = require __DIR__ . '/../app/Endpoints/endpoints.php';
 $app = AppFactory::create();
 $app->addBodyParsingMiddleware();
 
-// Aplicar middleware CORS
+/////Aplicar middleware CORS
 $app->add(new Cors());
 
-// Manejar peticiones OPTIONS
+////Manejar peticiones OPTIONS
 $app->options('/{routes:.+}', function ($request, $response, $args) {
     return $response;
 });
 
-// Cargar rutas
+/////Cargar rutas
 $endpoints($app);
 
 $app->run();

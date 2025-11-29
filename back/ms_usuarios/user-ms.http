@@ -1,12 +1,21 @@
+### ==================== MICROSERVICIO DE USUARIOS ====================
+### Puerto: 8000
+### Autenticación: Solo necesaria para operaciones protegidas
+
+### Variables de Ejemplo
+# @token_admin = a705cb6d024e0b43c29d10092a909b14
+
+### ==================== OPERACIONES PÚBLICAS ====================
+
 ### 1. Registrar Nuevo Usuario
 POST http://localhost:8000/register
 Content-Type: application/json
 
 {
-  "name": "Admin Pruebas",
-  "email": "adminprueba@example.com",
+  "name": "Gestor Nuevo",
+  "email": "gestornuevo@example.com",
   "password": "password123",
-  "role": "admin"
+  "role": "gestor"
 }
 
 ### 2. Iniciar Sesión (Login)
@@ -18,30 +27,61 @@ Content-Type: application/json
   "password": "password123"
 }
 
-### 3. Cerrar Sesión (Logout) 
-POST http://localhost:8000/logout
-Authorization: Bearer 7962a966c3b6d0bffaa07724f9c51bd2
-Content-Type: application/json
+### ==================== OPERACIONES PROTEGIDAS ====================
 
-### 4. Listar Todos los Usuarios 
+### 3. Listar Todos los Usuarios (Solo Admins)
 GET http://localhost:8000/users
-Authorization: Bearer 27b3abbfc7da8c0839c006a8a121b61c
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
 
-### 5. Actualizar un Usuario 
+### 4. Actualizar un Usuario (Solo Admins)
 PUT http://localhost:8000/users/1
-Authorization: Bearer 7962a966c3b6d0bffaa07724f9c51bd2
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
 
 {
   "name": "Juan Gestor Actualizado",
+  "email": "juan.updated@example.com",
   "role": "gestor"
 }
-### 6. Eliminar un Usuario 
+
+### 5. Eliminar un Usuario (Solo Admins)
 DELETE http://localhost:8000/users/2
-Authorization: Bearer 7962a966c3b6d0bffaa07724f9c51bd2
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
+
+### 6. Cerrar Sesión (Logout)
+POST http://localhost:8000/logout
+Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
+Content-Type: application/json
+
+### ==================== CASOS DE ERROR ====================
+
+### 7. Error: Registro con Email Duplicado
+POST http://localhost:8000/register
+Content-Type: application/json
+
 {
-  "name": "Prueba",
-  "role": "admin"
+  "name": "Usuario Duplicado",
+  "email": "admin1@example.com",
+  "password": "password123",
+  "role": "gestor"
 }
+
+### 8. Error: Login con Credenciales Incorrectas
+POST http://localhost:8000/login
+Content-Type: application/json
+
+{
+  "email": "admin1@example.com",
+  "password": "password_incorrecto"
+}
+
+### 9. Error: Listar Usuarios Sin Token
+GET http://localhost:8000/users
+Content-Type: application/json
+
+### 10. Error: Token Inválido
+GET http://localhost:8000/users
+Authorization: Bearer token_invalido_123
+Content-Type: application/json

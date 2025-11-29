@@ -11,16 +11,14 @@ class UserRepository
 {
     private $codesError = [
         400 => 400,
-        401 => 401,
-        403 => 403,
-        404 => 404,
-        409 => 409,
+        401 => 401, /// error de falat de autorización
+        403 => 403, /// prohibición de acceso
+        404 => 404, ///recurso no encontrado
+        409 => 409, ///conflicto en el estado actual del recruso
         'default' => 500
     ];
 
-    /**
-     * Registrar nuevo usuario
-     */
+    ///Registrar nuevo usuario
     public function register(Request $request, Response $response)
     {
         try {
@@ -31,21 +29,16 @@ class UserRepository
                 $data['name'] ?? null,
                 $data['email'] ?? null,
                 $data['password'] ?? null,
-                $data['role'] ?? null
-            );
-            
+                $data['role'] ?? null);
             $response->getBody()->write(json_encode($user, JSON_UNESCAPED_UNICODE));
             return $response->withHeader('Content-Type', 'application/json');
         } catch (Exception $ex) {
             $status = $this->codesError[$ex->getCode()] ?? $this->codesError['default'];
             $response->getBody()->write(json_encode(['error' => $ex->getMessage()], JSON_UNESCAPED_UNICODE));
             return $response->withStatus($status)->withHeader('Content-Type', 'application/json');
-        }
-    }
+        } }
 
-    /**
-     * Iniciar sesión
-     */
+    ///////////Iniciar sesión
     public function login(Request $request, Response $response)
     {
         try {
@@ -65,10 +58,7 @@ class UserRepository
             return $response->withStatus($status)->withHeader('Content-Type', 'application/json');
         }
     }
-
-    /**
-     * Cerrar sesión
-     */
+     //////////////Cerrar sesión
     public function logout(Request $request, Response $response)
     {
         try {
@@ -76,7 +66,6 @@ class UserRepository
             
             $controller = new UserController();
             $result = $controller->logout($token);
-            
             $response->getBody()->write(json_encode($result, JSON_UNESCAPED_UNICODE));
             return $response->withHeader('Content-Type', 'application/json');
         } catch (Exception $ex) {
@@ -86,9 +75,7 @@ class UserRepository
         }
     }
 
-    /**
-     * Listar todos los usuarios (admin)
-     */
+    ///////// Listar todos los usuarios (admin)
     public function listUsers(Request $request, Response $response)
     {
         try {
@@ -106,9 +93,7 @@ class UserRepository
         }
     }
 
-    /**
-     * Actualizar usuario (admin)
-     */
+    /////// Actualizar usuario (admin)
     public function updateUser(Request $request, Response $response, $args)
     {
         try {
@@ -128,31 +113,24 @@ class UserRepository
         }
     }
 
-    /**
-     * Cambiar rol de usuario (admin)
-     */
+    /////////Cambiar rol de usuario (admin
     public function changeUserRole(Request $request, Response $response, $args)
     {
         try {
             $token = $this->extractToken($request);
             $userId = $args['id'];
             $data = $request->getParsedBody();
-            
             $controller = new UserController();
             $result = $controller->changeUserRole($token, $userId, $data['role'] ?? null);
-            
             $response->getBody()->write(json_encode($result, JSON_UNESCAPED_UNICODE));
             return $response->withHeader('Content-Type', 'application/json');
         } catch (Exception $ex) {
             $status = $this->codesError[$ex->getCode()] ?? $this->codesError['default'];
             $response->getBody()->write(json_encode(['error' => $ex->getMessage()], JSON_UNESCAPED_UNICODE));
-            return $response->withStatus($status)->withHeader('Content-Type', 'application/json');
-        }
+            return $response->withStatus($status)->withHeader('Content-Type', 'application/json');}
     }
 
-    /**
-     * Eliminar usuario (admin)
-     */
+    ///////////Eliminar usuario (admin)
     public function deleteUser(Request $request, Response $response, $args)
     {
         try {
@@ -171,9 +149,7 @@ class UserRepository
         }
     }
 
-    /**
-     * Método auxiliar para extraer el token del request
-     */
+    //////////Método auxiliar para extraer el token del request
     private function extractToken(Request $request)
     {
         // Obtener Authorization de todas las fuentes posibles
@@ -182,7 +158,7 @@ class UserRepository
             ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: 
             ($request->getServerParams()['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
 
-        // Extraer token
+        //Extraer token
         if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
             return trim($matches[1]);
         }

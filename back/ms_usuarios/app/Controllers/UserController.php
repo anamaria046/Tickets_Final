@@ -7,50 +7,40 @@ use Exception;
 
 class UserController
 {
-    /**
-     * Registrar un nuevo usuario
-     * @throws Exception
-     */
+    ////////////Registrar un nuevo usuario
     public function register($name, $email, $password, $role)
     {
-        // Validación de campos
+    ////////////Validación de campos
         if (empty($name) || empty($email) || empty($password) || empty($role)) {
             throw new Exception("Campos obligatorios faltantes", 400);
         }
 
-        // Verificar si email ya existe
+    ////////////Verificar si email ya existe
         if (Users::where('email', $email)->first()) {
             throw new Exception("Email ya registrado", 409);
         }
 
-        // Crear usuario
+     /////Crear usuario
         $user = Users::create([
             'name' => $name,
             'email' => $email,
             'password' => $password,
             'role' => $role
         ]);
-
         return $user->toArray();
     }
 
-    /**
-     * Iniciar sesión
-     * @throws Exception
-     */
+    /////////Iniciar sesión
     public function login($email, $password)
     {
         if (empty($email) || empty($password)) {
             throw new Exception("Email y contraseña requeridos", 400);
         }
-
         $user = Users::where('email', $email)->first();
-        
         if (!$user || $user->password !== $password) {
             throw new Exception("Información incorrectas", 401);
         }
-
-        // Generar token
+        ////// Generar token
         $token = bin2hex(random_bytes(16));
         
         AToken::create([
@@ -69,10 +59,7 @@ class UserController
         ];
     }
 
-    /**
-     * Cerrar sesión
-     * @throws Exception
-     */
+    /////////Cerrar sesión
     public function logout($token)
     {
         if (empty($token)) {
@@ -88,13 +75,11 @@ class UserController
         }
     }
 
-    /**
-     * Listar todos los usuarios (solo admin)
-     * @throws Exception
-     */
+    //////////Listar todos los usuarios (solo admin)
+   
     public function getUsers($token)
     {
-        // Verificar autenticación y rol
+        ////Verificar autenticación y rol
         $user = $this->getUserFromToken($token);
         
         if (!$user || !$user->isAdmin()) {
@@ -105,47 +90,37 @@ class UserController
         return $users->toArray();
     }
 
-    /**
-     * Actualizar usuario (solo admin)
-     * @throws Exception
-     */
+    /////////Actualizar usuario (solo admin)
     public function updateUser($token, $userId, $data)
     {
-        // Verificar autenticación y rol
+        //Verificar autenticación y rol
         $user = $this->getUserFromToken($token);
         
         if (!$user || !$user->isAdmin()) {
             throw new Exception("Acceso denegado", 403);
         }
-
         // Validación adicional: Si se incluye 'role', verificar que sea válido
         if (isset($data['role']) && !in_array($data['role'], ['gestor', 'admin'])) {
             throw new Exception("Rol inválido", 400);
         }
-
         $updated = Users::where('id', $userId)->update($data);
-        
         if (!$updated) {
             throw new Exception("Usuario no encontrado", 404);
         }
-
         return ['message' => 'Usuario actualizado'];
     }
 
-    /**
-     * Cambiar rol de usuario (solo admin)
-     * @throws Exception
-     */
+    /////Cambiar rol de usuario (solo admin)
     public function changeUserRole($token, $userId, $newRole)
     {
-        // Verificar autenticación y rol
+        ///7Verificar autenticación y rol
         $user = $this->getUserFromToken($token);
         
         if (!$user || !$user->isAdmin()) {
             throw new Exception("Acceso denegado", 403);
         }
 
-        // Validar que se envíe un rol válido
+        ////Validar que se envíe un rol válido
         if (empty($newRole) || !in_array($newRole, ['gestor', 'admin'])) {
             throw new Exception("Rol requerido e inválido", 400);
         }
@@ -159,13 +134,11 @@ class UserController
         return ['message' => 'Rol de usuario cambiado'];
     }
 
-    /**
-     * Eliminar usuario (solo admin)
-     * @throws Exception
-     */
+    ///////Eliminar usuario (solo admin)
+ 
     public function deleteUser($token, $userId)
     {
-        // Verificar autenticación y rol
+        /////Verificar autenticación y rol
         $user = $this->getUserFromToken($token);
         
         if (!$user || !$user->isAdmin()) {
@@ -190,22 +163,16 @@ class UserController
         }
     }
 
-    /**
-     * Método auxiliar para obtener el usuario desde el token
-     * @throws Exception
-     */
+    ///////////Método auxiliar para obtener el usuario desde el token
     private function getUserFromToken($token)
     {
         if (empty($token)) {
             throw new Exception("Token requerido", 401);
         }
-
         $auth = AToken::where('token', $token)->first();
-        
         if (!$auth) {
             throw new Exception("Token inválido", 401);
         }
-
         return Users::find($auth->user_id);
     }
 }

@@ -15,7 +15,7 @@ class Token
         RequestHandlerInterface $handler
     ): ResponseInterface
     {
-        //Obtener Authorization de todas las fuentes posibles
+        ////Obtener Authorization de todas las fuentes posibles
         $authHeader =
             $request->getHeaderLine('Authorization') ?: 
             ($request->getServerParams()['HTTP_AUTHORIZATION'] ?? '') ?: 
@@ -25,7 +25,7 @@ class Token
             return $this->errorResponse('Token requerido', 401);
         }
 
-        //Extraer token
+        ////Extraer token
         if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
             $token = trim($matches[1]);
         } else {
@@ -36,14 +36,14 @@ class Token
             return $this->errorResponse('Token requerido', 401);
         }
 
-        //Validar token existente en la base de datos
+        /////Validar token existente en la base de datos
         $exists = AToken::where('token', $token)->first();
 
         if (!$exists) {
             return $this->errorResponse('Token inválido', 401);
         }
 
-        //Token válido, continuar con la petición
+        /////Token válido, continuar con la petición
         return $handler->handle($request);
     }
     private function errorResponse(string $message, int $status): ResponseInterface

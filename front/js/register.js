@@ -73,10 +73,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // Mostrar mensaje de éxito
             showMessage('Registro exitoso. Redirigiendo al inicio de sesión...', 'success');
 
-            // Redirigir al login después de 2 segundos
+            // Redirigir al login después de 1.5 segundos
             setTimeout(() => {
                 window.location.href = '../index.html';
-            }, 2000);
+            }, 1500);
 
         } catch (error) {
             console.error('Error en registro:', error);

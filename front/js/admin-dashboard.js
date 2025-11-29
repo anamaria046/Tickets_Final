@@ -1,581 +1,65 @@
-// Lógica del Dashboard del Administrador
-
-let currentTicketId = null;
-let allUsers = [];
-let adminUsers = [];
-
-document.addEventListener('DOMContentLoaded', function () {
-    // Verificar autenticación
-    if (!checkAuth()) {
-        return;
-    }
-
-    // Verificar que sea admin
-    if (!checkRole('admin')) {
-        return;
-    }
-
-    // Inicializar
+document.addEventListener('DOMContentLoaded', () => {
+    if (!checkAuth() || !checkRole('admin')) return;
     init();
 });
 
 function init() {
-    // Mostrar nombre del usuario
     const userName = getUserName();
-    if (userName) {
-        document.getElementById('userName').textContent = userName;
-    }
-
-    // Event listeners
+    if (userName) document.getElementById('userName').textContent = userName;
     setupEventListeners();
-
-    // Cargar datos iniciales
     loadAllTickets();
     loadUsers();
 }
 
 function setupEventListeners() {
-    // Tabs
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', function () {
-            const tab = this.dataset.tab;
-            switchTab(tab);
-        });
-    });
+    ////Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn =>
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab))
+    );
 
-    // Logout
+    ///Acciones generales
     document.getElementById('logoutBtn').addEventListener('click', logout);
-
-    // Filtros
     document.getElementById('filterForm').addEventListener('submit', handleFilter);
     document.getElementById('clearFilters').addEventListener('click', clearFilters);
 
-    // Modales
-    document.getElementById('closeTicketModal').addEventListener('click', closeTicketModal);
-    document.getElementById('closeUserModal').addEventListener('click', closeUserModal);
-
-    document.getElementById('ticketModal').addEventListener('click', function (e) {
-        if (e.target === this) closeTicketModal();
+    ////Modales
+    ['ticketModal', 'userModal'].forEach(id => {
+        const modal = document.getElementById(id);
+        const closeBtn = document.getElementById(id === 'ticketModal' ? 'closeTicketModal' : 'closeUserModal');
+        closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+        modal.addEventListener('click', e => e.target === modal && modal.classList.remove('active'));
     });
 
-    document.getElementById('userModal').addEventListener('click', function (e) {
-        if (e.target === this) closeUserModal();
-    });
-
-    // Acciones de ticket
+    ////Tickets
     document.getElementById('updateStatusBtn').addEventListener('click', handleUpdateStatus);
     document.getElementById('assignTicketBtn').addEventListener('click', handleAssignTicket);
     document.getElementById('addCommentForm').addEventListener('submit', handleAddComment);
 
-    // Editar usuario
+    ////Usuarios
     document.getElementById('editUserForm').addEventListener('submit', handleEditUser);
     document.getElementById('cancelEditUser').addEventListener('click', closeUserModal);
+    document.getElementById('createUserForm')?.addEventListener('submit', handleCreateUser);
 }
 
 function switchTab(tabName) {
-    // Actualizar botones
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.tab === tabName) {
-            btn.classList.add('active');
-        }
-    });
-
-    // Actualizar contenido
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
+    document.querySelectorAll('.tab-btn').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.tab === tabName)
+    );
+    document.querySelectorAll('.tab-content').forEach(content =>
+        content.classList.remove('active')
+    );
     document.getElementById(`tab-${tabName}`).classList.add('active');
 
-    // Cargar datos si es necesario
-    if (tabName === 'tickets') {
-        loadAllTickets();
-    } else if (tabName === 'usuarios') {
-        loadUsers();
-    }
+    if (tabName === 'tickets') loadAllTickets();
+    else if (tabName === 'usuarios') loadUsers();
 }
-
-
-/////////////////GESTIÓN DE TICKETS
-
-
-async function loadAllTickets() {
-    const loadingDiv = document.getElementById('ticketsLoading');
-    const containerDiv = document.getElementById('ticketsTableContainer');
-    const noTicketsDiv = document.getElementById('noTickets');
-    const tbody = document.getElementById('ticketsTableBody');
-
-    loadingDiv.style.display = 'flex';
-    containerDiv.style.display = 'none';
-    noTicketsDiv.style.display = 'none';
-
-    try {
-        const tickets = await listAllTickets();
-
-        // Cargar usuarios para los filtros
-        await loadUsersForFilters();
-
-        loadingDiv.style.display = 'none';
-
-        if (!tickets || tickets.length === 0) {
-            noTicketsDiv.style.display = 'block';
-            return;
-        }
-
-        containerDiv.style.display = 'block';
-        tbody.innerHTML = tickets.map(ticket => createTicketRow(ticket)).join('');
-
-        // Agregar event listeners
-        attachTicketEventListeners();
-
-    } catch (error) {
-        console.error('Error al cargar tickets:', error);
-        loadingDiv.style.display = 'none';
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center">
-                    <div class="alert alert-error">
-                        Error al cargar los tickets: ${error.message}
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-}
-
-function createTicketRow(ticket) {
-    const estadoBadge = `<span class="badge-estado ${ticket.estado}">${formatEstado(ticket.estado)}</span>`;
-    const fecha = formatDate(ticket.created_at);
-    const creador = ticket.gestor_id || 'N/A';
-    const asignado = ticket.admin_id || 'Sin asignar';
-
-    return `
-        <tr>
-            <td>#${ticket.id}</td>
-            <td>${escapeHtml(ticket.titulo)}</td>
-            <td>${estadoBadge}</td>
-            <td>ID: ${creador}</td>
-            <td>${asignado !== 'Sin asignar' ? 'ID: ' + asignado : asignado}</td>
-            <td>${fecha}</td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn btn-primary btn-icon view-ticket" data-ticket-id="${ticket.id}">
-                        Ver
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `;
-}
-
-function attachTicketEventListeners() {
-    document.querySelectorAll('.view-ticket').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const ticketId = this.dataset.ticketId;
-            openTicketModal(ticketId);
-        });
-    });
-}
-
-async function handleFilter(e) {
-    e.preventDefault();
-
-    const estado = document.getElementById('filterEstado').value;
-    const gestorId = document.getElementById('filterGestor').value;
-    const adminId = document.getElementById('filterAdmin').value;
-
-    const filters = {};
-    if (estado) filters.estado = estado;
-    if (gestorId) filters.gestor_id = gestorId;
-    if (adminId) filters.admin_id = adminId;
-
-    const loadingDiv = document.getElementById('ticketsLoading');
-    const containerDiv = document.getElementById('ticketsTableContainer');
-    const noTicketsDiv = document.getElementById('noTickets');
-    const tbody = document.getElementById('ticketsTableBody');
-
-    loadingDiv.style.display = 'flex';
-    containerDiv.style.display = 'none';
-    noTicketsDiv.style.display = 'none';
-
-    try {
-        const tickets = Object.keys(filters).length > 0
-            ? await searchTickets(filters)
-            : await listAllTickets();
-
-        loadingDiv.style.display = 'none';
-
-        if (!tickets || tickets.length === 0) {
-            noTicketsDiv.style.display = 'block';
-            return;
-        }
-
-        containerDiv.style.display = 'block';
-        tbody.innerHTML = tickets.map(ticket => createTicketRow(ticket)).join('');
-        attachTicketEventListeners();
-
-    } catch (error) {
-        console.error('Error al filtrar tickets:', error);
-        loadingDiv.style.display = 'none';
-        alert('Error al filtrar tickets: ' + error.message);
-    }
-}
-
-function clearFilters() {
-    document.getElementById('filterEstado').value = '';
-    document.getElementById('filterGestor').value = '';
-    document.getElementById('filterAdmin').value = '';
-    loadAllTickets();
-}
-
-async function loadUsersForFilters() {
-    try {
-        const users = await listUsers();
-        allUsers = users;
-        adminUsers = users.filter(u => u.role === 'admin');
-
-        //////filtro de gestores
-        const filterGestor = document.getElementById('filterGestor');
-        const gestores = users.filter(u => u.role === 'gestor');
-        filterGestor.innerHTML = '<option value="">Todos</option>' +
-            gestores.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
-
-        //////filtro de admins
-        const filterAdmin = document.getElementById('filterAdmin');
-        filterAdmin.innerHTML = '<option value="">Todos</option>' +
-            adminUsers.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
-
-        ///////asignación
-        const assignAdmin = document.getElementById('assignAdmin');
-        assignAdmin.innerHTML = '<option value="">Sin asignar</option>' +
-            adminUsers.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
-
-    } catch (error) {
-        console.error('Error al cargar usuarios:', error);
-    }
-}
-
-async function openTicketModal(ticketId) {
-    currentTicketId = ticketId;
-    const modal = document.getElementById('ticketModal');
-    const detailsDiv = document.getElementById('ticketDetails');
-    const historyDiv = document.getElementById('ticketHistory');
-
-    modal.classList.add('active');
-    detailsDiv.innerHTML = '<div class="loading-spinner"></div>';
-    historyDiv.innerHTML = '';
-
-    try {
-        const ticket = await getTicketDetails(ticketId);
-        detailsDiv.innerHTML = createTicketDetails(ticket);
-
-        ///////////Establecer valores en los controles
-        document.getElementById('ticketEstado').value = ticket.estado;
-        document.getElementById('assignAdmin').value = ticket.admin_id || '';
-
-        // Cargar historial
-        const history = await getTicketHistory(ticketId);
-        historyDiv.innerHTML = history.map(item => createHistoryItem(item)).join('');
-
-    } catch (error) {
-        console.error('Error al cargar detalles:', error);
-        detailsDiv.innerHTML = `
-            <div class="alert alert-error">
-                Error al cargar los detalles: ${error.message}
-            </div>
-        `;
-    }
-}
-
-function createTicketDetails(ticket) {
-    const estadoBadge = getEstadoBadge(ticket.estado);
-    const fecha = formatDate(ticket.created_at);
-
-    return `
-        <div class="ticket-detail-header">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <h3 class="ticket-detail-title">${escapeHtml(ticket.titulo)}</h3>
-                ${estadoBadge}
-            </div>
-            <div class="ticket-meta">
-                <div class="meta-item">
-                    <span class="meta-label">ID</span>
-                    <span class="meta-value">#${ticket.id}</span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-label">Creador</span>
-                    <span class="meta-value">ID: ${ticket.gestor_id}</span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-label">Asignado a</span>
-                    <span class="meta-value">${ticket.admin_id ? 'ID: ' + ticket.admin_id : 'Sin asignar'}</span>
-                </div>
-                <div class="meta-item">
-                    <span class="meta-label">Fecha</span>
-                    <span class="meta-value">${fecha}</span>
-                </div>
-            </div>
-        </div>
-        <div class="ticket-detail-description">
-            <strong>Descripción:</strong><br>
-            ${escapeHtml(ticket.descripcion)}
-        </div>
-    `;
-}
-
-async function handleUpdateStatus() {
-    if (!currentTicketId) return;
-
-    const nuevoEstado = document.getElementById('ticketEstado').value;
-
-    try {
-        await updateTicketStatus(currentTicketId, nuevoEstado);
-        alert('Estado actualizado correctamente');
-
-        ///////Recargar detalles
-        const ticket = await getTicketDetails(currentTicketId);
-        document.getElementById('ticketDetails').innerHTML = createTicketDetails(ticket);
-
-        ///////Recargar historial
-        const history = await getTicketHistory(currentTicketId);
-        document.getElementById('ticketHistory').innerHTML = history.map(item => createHistoryItem(item)).join('');
-
-        //////Recargar tabla
-        loadAllTickets();
-
-    } catch (error) {
-        console.error('Error al actualizar estado:', error);
-        alert('Error al actualizar estado: ' + error.message);
-    }
-}
-
-async function handleAssignTicket() {
-    if (!currentTicketId) return;
-
-    const adminId = document.getElementById('assignAdmin').value;
-
-    if (!adminId) {
-        alert('Por favor selecciona un administrador');
-        return;
-    }
-
-    try {
-        await assignTicket(currentTicketId, adminId);
-        alert('Ticket asignado correctamente');
-
-        ////////Recargar detalles
-        const ticket = await getTicketDetails(currentTicketId);
-        document.getElementById('ticketDetails').innerHTML = createTicketDetails(ticket);
-
-        /////////Recargar historial
-        const history = await getTicketHistory(currentTicketId);
-        document.getElementById('ticketHistory').innerHTML = history.map(item => createHistoryItem(item)).join('');
-
-        //////Recargar tabla
-        loadAllTickets();
-
-    } catch (error) {
-        console.error('Error al asignar ticket:', error);
-        alert('Error al asignar ticket: ' + error.message);
-    }
-}
-
-async function handleAddComment(e) {
-    e.preventDefault();
-
-    if (!currentTicketId) return;
-
-    const comentario = document.getElementById('comentario').value.trim();
-
-    if (!comentario) {
-        alert('Por favor escribe un comentario');
-        return;
-    }
-
-    try {
-        await addComment(currentTicketId, comentario);
-
-        // Limpiar formulario
-        e.target.reset();
-
-        // Recargar historial
-        const history = await getTicketHistory(currentTicketId);
-        document.getElementById('ticketHistory').innerHTML = history.map(item => createHistoryItem(item)).join('');
-
-    } catch (error) {
-        console.error('Error al agregar comentario:', error);
-        alert('Error al agregar comentario: ' + error.message);
-    }
-}
-
-function closeTicketModal() {
-    document.getElementById('ticketModal').classList.remove('active');
-    currentTicketId = null;
-    document.getElementById('addCommentForm').reset();
-}
-
-
-////////////////////GESTIÓN DE USUARIOS/////////////////
-
-
-async function loadUsers() {
-    const loadingDiv = document.getElementById('usersLoading');
-    const containerDiv = document.getElementById('usersTableContainer');
-    const tbody = document.getElementById('usersTableBody');
-
-    loadingDiv.style.display = 'flex';
-    containerDiv.style.display = 'none';
-
-    try {
-        const users = await listUsers();
-        allUsers = users;
-
-        loadingDiv.style.display = 'none';
-        containerDiv.style.display = 'block';
-
-        tbody.innerHTML = users.map(user => createUserRow(user)).join('');
-
-        // Agregar event listeners
-        attachUserEventListeners();
-
-    } catch (error) {
-        console.error('Error al cargar usuarios:', error);
-        loadingDiv.style.display = 'none';
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="text-center">
-                    <div class="alert alert-error">
-                        Error al cargar los usuarios: ${error.message}
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-}
-
-function createUserRow(user) {
-    const roleBadge = user.role === 'admin'
-        ? '<span class="badge badge-danger">Admin</span>'
-        : '<span class="badge badge-primary">Gestor</span>';
-    const fecha = formatDate(user.created_at);
-
-    return `
-        <tr>
-            <td>${user.id}</td>
-            <td>${escapeHtml(user.name)}</td>
-            <td>${escapeHtml(user.email)}</td>
-            <td>${roleBadge}</td>
-            <td>${fecha}</td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn btn-primary btn-icon edit-user" data-user-id="${user.id}">
-                        Editar
-                    </button>
-                    <button class="btn btn-danger btn-icon delete-user" data-user-id="${user.id}">
-                        Eliminar
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `;
-}
-
-function attachUserEventListeners() {
-    document.querySelectorAll('.edit-user').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const userId = this.dataset.userId;
-            openEditUserModal(userId);
-        });
-    });
-
-    document.querySelectorAll('.delete-user').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const userId = this.dataset.userId;
-            handleDeleteUser(userId);
-        });
-    });
-}
-
-function openEditUserModal(userId) {
-    const user = allUsers.find(u => u.id == userId);
-    if (!user) return;
-
-    document.getElementById('editUserId').value = user.id;
-    document.getElementById('editUserName').value = user.name;
-    document.getElementById('editUserEmail').value = user.email;
-    document.getElementById('editUserRole').value = user.role;
-
-    document.getElementById('userModal').classList.add('active');
-}
-
-async function handleEditUser(e) {
-    e.preventDefault();
-
-    const userId = document.getElementById('editUserId').value;
-    const name = document.getElementById('editUserName').value.trim();
-    const email = document.getElementById('editUserEmail').value.trim();
-    const role = document.getElementById('editUserRole').value;
-
-    if (!name || !email || !role) {
-        alert('Por favor completa todos los campos');
-        return;
-    }
-
-    try {
-        // Actualizar datos básicos
-        await updateUser(userId, { name, email });
-
-        // Cambiar rol si es diferente
-        const currentUser = allUsers.find(u => u.id == userId);
-        if (currentUser && currentUser.role !== role) {
-            await changeUserRole(userId, role);
-        }
-
-        alert('Usuario actualizado correctamente');
-        closeUserModal();
-        loadUsers();
-
-    } catch (error) {
-        console.error('Error al actualizar usuario:', error);
-        alert('Error al actualizar usuario: ' + error.message);
-    }
-}
-
-async function handleDeleteUser(userId) {
-    const user = allUsers.find(u => u.id == userId);
-    if (!user) return;
-
-    if (!confirm(`¿Estás seguro de eliminar al usuario "${user.name}"?`)) {
-        return;
-    }
-
-    try {
-        await deleteUser(userId);
-        alert('Usuario eliminado correctamente');
-        loadUsers();
-
-    } catch (error) {
-        console.error('Error al eliminar usuario:', error);
-        alert('Error al eliminar usuario: ' + error.message);
-    }
-}
-
-function closeUserModal() {
-    document.getElementById('userModal').classList.remove('active');
-    document.getElementById('editUserForm').reset();
-}
-
-////////////////UTILIDADES
 
 function createHistoryItem(item) {
-    const fecha = formatDate(item.created_at);
-
     return `
         <div class="history-item">
             <div class="history-header">
                 <span class="history-user">👤 Usuario #${item.user_id}</span>
-                <span class="history-date">${fecha}</span>
+                <span class="history-date">${formatDate(item.created_at)}</span>
             </div>
             <div class="history-message">${escapeHtml(item.mensaje)}</div>
         </div>
@@ -584,33 +68,29 @@ function createHistoryItem(item) {
 
 function getEstadoBadge(estado) {
     const badges = {
-        'abierto': '<span class="badge badge-primary">Abierto</span>',
-        'en_progreso': '<span class="badge badge-warning">En Progreso</span>',
-        'resuelto': '<span class="badge badge-success">Resuelto</span>',
-        'cerrado': '<span class="badge badge-secondary">Cerrado</span>'
+        abierto: '<span class="badge badge-primary">Abierto</span>',
+        en_progreso: '<span class="badge badge-warning">En Progreso</span>',
+        resuelto: '<span class="badge badge-success">Resuelto</span>',
+        cerrado: '<span class="badge badge-secondary">Cerrado</span>'
     };
     return badges[estado] || '<span class="badge">Desconocido</span>';
 }
 
 function formatEstado(estado) {
     const estados = {
-        'abierto': 'Abierto',
-        'en_progreso': 'En Progreso',
-        'resuelto': 'Resuelto',
-        'cerrado': 'Cerrado'
+        abierto: 'Abierto',
+        en_progreso: 'En Progreso',
+        resuelto: 'Resuelto',
+        cerrado: 'Cerrado'
     };
     return estados[estado] || estado;
 }
 
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+    return new Date(dateString).toLocaleDateString('es-ES', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
     });
 }
 
@@ -620,111 +100,85 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
-////////////////////CREAR USUARIO/////////////////
 
-// Agregar event listener para crear usuario
-document.addEventListener('DOMContentLoaded', function () {
-    const createUserForm = document.getElementById('createUserForm');
-    if (createUserForm) {
-        createUserForm.addEventListener('submit', handleCreateUser);
+function getElements(ids) {
+    return ids.reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id) }), {});
+}
+
+function showLoading(loading, container, noData) {
+    loading.style.display = 'flex';
+    container.style.display = 'none';
+    noData.style.display = 'none';
+}
+
+function handleError(action, error, loading, tbody, colspan) {
+    console.error(`Error al ${action}:`, error);
+    loading.style.display = 'none';
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr><td colspan="${colspan}" class="text-center">
+                <div class="alert alert-error">Error al ${action}: ${error.message}</div>
+            </td></tr>
+        `;
+    } else {
+        alert(`Error al ${action}: ${error.message}`);
     }
-});
+}
+function getFilterValues(elementIds, keys) {
+    return elementIds.reduce((acc, id, i) => {
+        const val = document.getElementById(id).value;
+        return val ? { ...acc, [keys[i]]: val } : acc;
+    }, {});
+}
+function populateSelect(id, users, emptyText = 'Todos') {
+    document.getElementById(id).innerHTML = `<option value="">${emptyText}</option>` +
+        users.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+}
 
-async function handleCreateUser(e) {
-    e.preventDefault();
+function createMetaItem(label, value) {
+    return `
+        <div class="meta-item">
+            <span class="meta-label">${label}</span>
+            <span class="meta-value">${value}</span>
+        </div>
+    `;
+}
 
-    // Limpiar mensajes previos
-    hideCreateUserMessage();
-
-    // Obtener valores
-    const name = document.getElementById('newUserName').value.trim();
-    const email = document.getElementById('newUserEmail').value.trim();
-    const password = document.getElementById('newUserPassword').value.trim();
-    const role = document.getElementById('newUserRole').value;
-
-    // Validación básica
-    if (!name || !email || !password || !role) {
-        showCreateUserMessage('Por favor completa todos los campos', 'error');
-        return;
-    }
-
-    // Validar formato de email
-    if (!isValidEmail(email)) {
-        showCreateUserMessage('Por favor ingresa un email válido', 'error');
-        return;
-    }
-
-    // Validar longitud de contraseña
-    if (password.length < 6) {
-        showCreateUserMessage('La contraseña debe tener al menos 6 caracteres', 'error');
-        return;
-    }
-
-    // Validar rol
-    if (role !== 'gestor' && role !== 'admin') {
-        showCreateUserMessage('Por favor selecciona un rol válido', 'error');
-        return;
-    }
-
-    // Mostrar estado de carga
-    setCreateUserLoading(true);
-
+//acciones
+async function updateTicketAndReload(updateFn, successMsg) {
     try {
-        // Llamar a la API de registro
-        const userData = {
-            name: name,
-            email: email,
-            password: password,
-            role: role
-        };
-
-        const response = await register(userData);
-
-        // Mostrar mensaje de éxito
-        showCreateUserMessage('Usuario creado exitosamente', 'success');
-
-        // Limpiar formulario
-        e.target.reset();
-
-        // Recargar lista de usuarios si estamos en ese tab
-        setTimeout(() => {
-            loadUsers();
-            hideCreateUserMessage();
-        }, 2000);
-
+        await updateFn();
+        alert(successMsg);
+        const [ticket, history] = await Promise.all([
+            getTicketDetails(currentTicketId),
+            getTicketHistory(currentTicketId)
+        ]);
+        document.getElementById('ticketDetails').innerHTML = createTicketDetails(ticket);
+        document.getElementById('ticketHistory').innerHTML = history.map(createHistoryItem).join('');
+        loadAllTickets();
     } catch (error) {
-        console.error('Error al crear usuario:', error);
-        showCreateUserMessage(error.message || 'Error al crear usuario. Intenta nuevamente.', 'error');
-    } finally {
-        setCreateUserLoading(false);
+        alert('Error: ' + error.message);
     }
 }
 
 function showCreateUserMessage(text, type) {
-    const messageDiv = document.getElementById('createUserMessage');
-    messageDiv.textContent = text;
-    messageDiv.className = `auth-message ${type} show`;
+    const msg = document.getElementById('createUserMessage');
+    msg.textContent = text;
+    msg.className = `auth-message ${type} show`;
 }
 
 function hideCreateUserMessage() {
-    const messageDiv = document.getElementById('createUserMessage');
-    messageDiv.className = 'auth-message';
-    messageDiv.textContent = '';
+    const msg = document.getElementById('createUserMessage');
+    msg.className = 'auth-message';
+    msg.textContent = '';
 }
 
 function setCreateUserLoading(loading) {
-    const submitBtn = document.getElementById('createUserSubmitBtn');
-    if (loading) {
-        submitBtn.disabled = true;
-        submitBtn.classList.add('btn-loading');
-    } else {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('btn-loading');
-    }
-}
-
-function isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    const btn = document.getElementById('createUserSubmitBtn');
+    btn.disabled = loading;
+    btn.classList.toggle('btn-loading', loading);
 }
