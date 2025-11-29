@@ -36,8 +36,8 @@ function createTicketRow(t) {
             <td>#${t.id}</td>
             <td>${escapeHtml(t.titulo)}</td>
             <td><span class="badge-estado ${t.estado}">${formatEstado(t.estado)}</span></td>
-            <td>ID: ${t.gestor_id || 'N/A'}</td>
-            <td>${t.admin_id ? 'ID: ' + t.admin_id : 'Sin asignar'}</td>
+            <td>${t.gestor?.name || 'N/A'}</td>
+            <td>${t.admin?.name || 'Sin asignar'}</td>
             <td>${formatDate(t.created_at)}</td>
             <td>
                 <button class="btn btn-primary btn-icon view-ticket" data-ticket-id="${t.id}">Ver</button>
@@ -140,8 +140,8 @@ function createTicketDetails(t) {
             </div>
             <div class="ticket-meta">
                 ${createMetaItem('ID', `#${t.id}`)}
-                ${createMetaItem('Creador', `ID: ${t.gestor_id}`)}
-                ${createMetaItem('Asignado a', t.admin_id ? `ID: ${t.admin_id}` : 'Sin asignar')}
+                ${createMetaItem('Creador', t.gestor?.name || 'N/A')}
+                ${createMetaItem('Asignado a', t.admin?.name || 'Sin asignar')}
                 ${createMetaItem('Fecha', formatDate(t.created_at))}
             </div>
         </div>

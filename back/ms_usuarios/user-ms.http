@@ -1,12 +1,3 @@
-### ==================== MICROSERVICIO DE USUARIOS ====================
-### Puerto: 8000
-### Autenticación: Solo necesaria para operaciones protegidas
-
-### Variables de Ejemplo
-# @token_admin = a705cb6d024e0b43c29d10092a909b14
-
-### ==================== OPERACIONES PÚBLICAS ====================
-
 ### 1. Registrar Nuevo Usuario
 POST http://localhost:8000/register
 Content-Type: application/json
@@ -27,14 +18,14 @@ Content-Type: application/json
   "password": "password123"
 }
 
-### ==================== OPERACIONES PROTEGIDAS ====================
+###################OPERACIONES PROTEGIDAS 
 
-### 3. Listar Todos los Usuarios (Solo Admins)
+### 3.Listar Todos los Usuarios (Solo Admins)
 GET http://localhost:8000/users
 Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
 
-### 4. Actualizar un Usuario (Solo Admins)
+### 4.Actualizar un Usuario (Solo Admins)
 PUT http://localhost:8000/users/1
 Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
@@ -45,19 +36,19 @@ Content-Type: application/json
   "role": "gestor"
 }
 
-### 5. Eliminar un Usuario (Solo Admins)
+### 5.Eliminar un Usuario (Solo Admins)
 DELETE http://localhost:8000/users/2
 Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
 
-### 6. Cerrar Sesión (Logout)
+### 6.Cerrar Sesión (Logout)
 POST http://localhost:8000/logout
 Authorization: Bearer a705cb6d024e0b43c29d10092a909b14
 Content-Type: application/json
 
-### ==================== CASOS DE ERROR ====================
+##################CASOS DE ERROR 
 
-### 7. Error: Registro con Email Duplicado
+### 7.Error: Registro con Email Duplicado
 POST http://localhost:8000/register
 Content-Type: application/json
 
@@ -68,7 +59,7 @@ Content-Type: application/json
   "role": "gestor"
 }
 
-### 8. Error: Login con Credenciales Incorrectas
+### 8.Error: Login con Credenciales Incorrectas
 POST http://localhost:8000/login
 Content-Type: application/json
 
@@ -77,11 +68,11 @@ Content-Type: application/json
   "password": "password_incorrecto"
 }
 
-### 9. Error: Listar Usuarios Sin Token
+### 9.Error: Listar Usuarios Sin Token
 GET http://localhost:8000/users
 Content-Type: application/json
 
-### 10. Error: Token Inválido
+### 10.Error: Token Inválido
 GET http://localhost:8000/users
 Authorization: Bearer token_invalido_123
 Content-Type: application/json
